@@ -1,10 +1,12 @@
 package main
 
 import (
+	"Backend/database"
 	"Backend/routes"
 )
 
 func main() {
-	r := routes.SetupRouter()
+	database.Conectar()
+	r := routes.SetupRoutes()
 	r.Run(":8080")
 }

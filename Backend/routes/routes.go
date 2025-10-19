@@ -6,14 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter() *gin.Engine {
+func SetupRoutes() *gin.Engine {
 	r := gin.Default()
-
-	// Exemplo de rota
-	r.GET("/", controllers.Home)
-
-	// Rota de exemplo para usuário
-	r.GET("/users", controllers.GetUsers)
-
+	r.POST("/clientes", controllers.CriarCliente)
+	r.POST("/login", controllers.Login)
 	return r
 }
