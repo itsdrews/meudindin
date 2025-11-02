@@ -13,7 +13,6 @@ import (
 var DB *gorm.DB
 
 func Conectar() {
-	// ⚙️ Ajuste de acordo com o seu ambiente local
 	host := "localhost"
 	user := "postgres"
 	password := "blackguns"
@@ -30,7 +29,7 @@ func Conectar() {
 		log.Fatal("Erro ao conectar ao PostgreSQL:", err)
 	}
 
-	fmt.Println("✅ Conectado ao PostgreSQL com sucesso!")
+	fmt.Println("Conectado ao PostgreSQL com sucesso!")
 
 	DB.AutoMigrate(&models.Cliente{})
 }

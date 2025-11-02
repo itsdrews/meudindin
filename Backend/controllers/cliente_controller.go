@@ -1,13 +1,25 @@
 package controllers
 
 import (
-	"Backend/database"
-	"Backend/models"
 	"net/http"
+	"strconv"
+
+	"errors"
+
+	"Backend/models"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
+
+// Assume que db *gorm.DB é injetado ou acessível
+var DB *gorm.DB
+
+// Inicialização (pode ser chamada no main)
+func SetDB(db *gorm.DB) {
+	DB = db
+}
 
 // Função auxiliar para gerar hash da senha
 func HashPassword(password string) (string, error) {
@@ -15,6 +27,15 @@ func HashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
+// Função auxiliar para comparar senha
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+// =====================
+// Criar Cliente
+// =====================
 func CriarCliente(c *gin.Context) {
 	var cliente models.Cliente
 
@@ -23,7 +44,17 @@ func CriarCliente(c *gin.Context) {
 		return
 	}
 
-	//  Criptografar senha
+	// Verifica se CPF ou email já existem
+	var existing models.Cliente
+	if err := DB.Where("email = ? OR cpf = ?", cliente.Email, cliente.CPF).First(&existing).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"erro": "Email ou CPF já cadastrado"})
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao verificar usuário"})
+		return
+	}
+
+	// Criptografar senha
 	hashedPassword, err := HashPassword(cliente.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao criptografar senha"})
@@ -31,18 +62,20 @@ func CriarCliente(c *gin.Context) {
 	}
 	cliente.Password = hashedPassword
 
-	// 💾 Salvar no banco
-	if err := database.DB.Create(&cliente).Error; err != nil {
+	// Salvar no banco
+	if err := DB.Create(&cliente).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao salvar cliente"})
 		return
 	}
 
-	// Não retornar senha ao cliente
+	// Não retornar senha
 	cliente.Password = ""
 	c.JSON(http.StatusCreated, cliente)
 }
 
-// Func para logar
+// =====================
+// Login
+// =====================
 func Login(c *gin.Context) {
 	var loginData struct {
 		Email    string `json:"email"`
@@ -50,21 +83,19 @@ func Login(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&loginData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "JSON inválido"})
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "JSON inválido"})
 		return
 	}
 
 	var cliente models.Cliente
-	result := database.DB.Where("email = ?", loginData.Email).First(&cliente)
+	result := DB.Where("email = ?", loginData.Email).First(&cliente)
 	if result.Error != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Email não encontrado"})
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Usuário ou senha incorretos"})
 		return
 	}
 
-	// Compara a senha enviada com a senha criptografada do banco
-	err := bcrypt.CompareHashAndPassword([]byte(cliente.Password), []byte(loginData.Password))
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Senha incorreta"})
+	if !CheckPasswordHash(loginData.Password, cliente.Password) {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Usuário ou senha incorretos"})
 		return
 	}
 
@@ -76,4 +107,145 @@ func Login(c *gin.Context) {
 			"email": cliente.Email,
 		},
 	})
+}
+
+// =====================
+// Deletar Cliente (cascade)
+// =====================
+func DeletarCliente(c *gin.Context) {
+	id := c.Param("id")
+
+	var cliente models.Cliente
+	if err := DB.Preload("Contas.Metas").First(&cliente, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "Cliente não encontrado"})
+		return
+	}
+
+	// Deleta cliente e todas as contas/metas com cascade
+	if err := DB.Select("Contas", "Metas").Delete(&cliente).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao deletar cliente"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Cliente deletado com sucesso"})
+}
+
+// POST /clientes/:id/contas
+func AddConta(c *gin.Context) {
+	clienteID, _ := strconv.Atoi(c.Param("id"))
+	var cliente models.Cliente
+	if err := DB.First(&cliente, clienteID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente não encontrado"})
+		return
+	}
+
+	var conta models.Conta
+	if err := c.ShouldBindJSON(&conta); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := cliente.AdicionarConta(DB, &conta); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, conta)
+}
+
+// DELETE /clientes/:id/contas/:conta_id
+func RemoveConta(c *gin.Context) {
+	clienteID, _ := strconv.Atoi(c.Param("id"))
+	contaID, _ := strconv.Atoi(c.Param("conta_id"))
+
+	var cliente models.Cliente
+	if err := DB.First(&cliente, clienteID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente não encontrado"})
+		return
+	}
+
+	if err := cliente.RemoverConta(DB, uint(contaID)); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// GET /clientes/:id/contas
+func ListContas(c *gin.Context) {
+	clienteID, _ := strconv.Atoi(c.Param("id"))
+	var cliente models.Cliente
+	if err := DB.First(&cliente, clienteID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente não encontrado"})
+		return
+	}
+
+	contas, err := cliente.ListarContas(DB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, contas)
+}
+
+// POST /clientes/:id/metas
+func AddMeta(c *gin.Context) {
+	clienteID, _ := strconv.Atoi(c.Param("id"))
+	var cliente models.Cliente
+	if err := DB.First(&cliente, clienteID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente não encontrado"})
+		return
+	}
+
+	var meta models.Meta
+	if err := c.ShouldBindJSON(&meta); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := cliente.AdicionarMeta(DB, &meta); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, meta)
+}
+
+// DELETE /clientes/:id/metas/:meta_id
+func RemoveMeta(c *gin.Context) {
+	clienteID, _ := strconv.Atoi(c.Param("id"))
+	metaID, _ := strconv.Atoi(c.Param("meta_id"))
+
+	var cliente models.Cliente
+	if err := DB.First(&cliente, clienteID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente não encontrado"})
+		return
+	}
+
+	if err := cliente.RemoverMeta(DB, uint(metaID)); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// GET /clientes/:id/metas
+func ListMetas(c *gin.Context) {
+	clienteID, _ := strconv.Atoi(c.Param("id"))
+	var cliente models.Cliente
+	if err := DB.First(&cliente, clienteID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente não encontrado"})
+		return
+	}
+
+	metas, err := cliente.ListarMetas(DB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, metas)
 }
