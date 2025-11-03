@@ -113,16 +113,29 @@ func Login(c *gin.Context) {
 // Deletar Cliente (cascade)
 // =====================
 func DeletarCliente(c *gin.Context) {
-	id := c.Param("id")
 
+	idParam := c.Param("id")
+	idUint, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "ID inválido"})
+		return
+	}
+	id := uint(idUint)
+
+	//  Buscar cliente pelo ID sem Preload
 	var cliente models.Cliente
-	if err := DB.Preload("Contas.Metas").First(&cliente, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"erro": "Cliente não encontrado"})
+	if err := DB.First(&cliente, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"erro": "Cliente não encontrado"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao buscar cliente"})
+		}
 		return
 	}
 
-	// Deleta cliente e todas as contas/metas com cascade
-	if err := DB.Select("Contas", "Metas").Delete(&cliente).Error; err != nil {
+	// Deletar o cliente
+	//    ON DELETE CASCADE vai automaticamente deletar contas e metas
+	if err := DB.Delete(&cliente).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao deletar cliente"})
 		return
 	}

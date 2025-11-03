@@ -15,8 +15,8 @@ type Cliente struct {
 	Password        string    `json:"password,omitempty"`                  // omitido ao retornar no JSON
 	DataCadastro    time.Time `json:"data_cadastro" gorm:"autoCreateTime"` // TimeStamp da criação da entidade
 	DataAtualizacao time.Time `json:"data_atualizacao" gorm:"autoUpdateTime"`
-	Contas          []Conta   `json:"contas" gorm:"foreignKey:ClienteID"`
-	Metas           []Meta    `json:"metas" gorm:"foreignKey:ClienteID"`
+	Contas          []Conta   `json:"contas" gorm:"foreignKey:ClienteID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Metas           []Meta    `json:"metas" gorm:"foreignKey:ClienteID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 
 // Métodos da entidade Cliente
