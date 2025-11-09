@@ -3,24 +3,29 @@ package main
 import (
 	"Backend/controllers"
 	"Backend/database"
-	"Backend/models"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	// Conecta no PostgreSQL
 	database.Conectar()
-
-	db := database.DB
-
-	// Auto-migrate (GORM cria as tabelas se não existirem)
-	db.AutoMigrate(&models.Cliente{}, &models.Conta{}, &models.Meta{})
-
-	// Configura DB nos controllers
-	controllers.SetDB(db)
+	controllers.SetDB(database.DB)
 
 	r := gin.Default()
+	// Configuração CORS
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
 
 	// Rotas Contas
 	r.POST("/clientes/:id/contas", controllers.AddConta)

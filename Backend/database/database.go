@@ -1,35 +1,29 @@
 package database
 
 import (
-	"fmt"
-	"log"
+    "fmt"
+    "log"
 
-	"Backend/models"
+    "Backend/models"
 
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+    "gorm.io/driver/sqlite"  // MUDAR para SQLite
+    "gorm.io/gorm"
 )
 
 var DB *gorm.DB
 
 func Conectar() {
-	host := "localhost"
-	user := "postgres"
-	password := "blackguns"
-	dbName := "meudindin"
-	port := "5432"
-	sslmode := "disable"
+    // Usando SQLite (arquivo local)
+    dsn := "meudindin.db"  // Arquivo no mesmo diretório
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-		host, user, password, dbName, port, sslmode)
+    var err error
+    DB, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+    if err != nil {
+        log.Fatal("Erro ao conectar ao SQLite:", err)
+    }
 
-	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatal("Erro ao conectar ao PostgreSQL:", err)
-	}
+    fmt.Println("Conectado ao SQLite com sucesso!")
 
-	fmt.Println("Conectado ao PostgreSQL com sucesso!")
-
-	DB.AutoMigrate(&models.Cliente{})
+    // Criar tabelas
+    DB.AutoMigrate(&models.Cliente{}, &models.Conta{}, &models.Meta{}, &models.Transacao{})
 }
