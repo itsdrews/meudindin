@@ -78,7 +78,7 @@ const Home = () => {
         </WelcomeSubtitle>
         
         <UserInfo>
-          <UserEmail>Bem-vindo, {user?.name || 'Usuário'}!</UserEmail>
+          <UserEmail>Bem-vindo, {user?.nome || 'User'}!</UserEmail>
           <UserName>{user?.email || 'seu@email.com'}</UserName>
         </UserInfo>
 

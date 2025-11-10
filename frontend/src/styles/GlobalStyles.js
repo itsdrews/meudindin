@@ -5,6 +5,7 @@ export const GlobalStyles = createGlobalStyle`
     margin: 0 auto;
     padding: 0;
     box-sizing: border-box;
+    width: 100%;
   }
 
   body {

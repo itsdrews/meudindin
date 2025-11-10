@@ -157,7 +157,7 @@ const Login = () => {
       <LoginCard>
         <CardHeader>
           <WelcomeTitle>Bem-vindo de volta</WelcomeTitle>
-          <WelcomeSubtitle>Gerencie suas finanças com inteligência</WelcomeSubtitle>
+          <WelcomeSubtitle>As rédeas do seu dinheiro na palma da mão!</WelcomeSubtitle>
         </CardHeader>
 
         <form onSubmit={handleSubmit}>
