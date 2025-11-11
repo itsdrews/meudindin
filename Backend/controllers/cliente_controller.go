@@ -86,17 +86,18 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "JSON inválido"})
 		return
 	}
-
+	// Substituir consulta direta por um get na entidade
 	var cliente models.Cliente
+	// Erro de Email
 	result := DB.Where("email = ?", loginData.Email).First(&cliente)
 	if result.Error != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Usuário ou senha incorretos"})
 		return
 	}
-
+	// Erro de Senha
 	if !CheckPasswordHash(loginData.Password, cliente.Password) {
 		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Usuário ou senha incorretos"})
-		return
+		return 
 	}
 
 	c.JSON(http.StatusOK, gin.H{

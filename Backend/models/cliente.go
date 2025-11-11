@@ -18,7 +18,7 @@ type Cliente struct {
 	Contas          []Conta   `json:"contas" gorm:"foreignKey:ClienteID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Metas           []Meta    `json:"metas" gorm:"foreignKey:ClienteID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
-
+	
 // Métodos da entidade Cliente
 func (c *Cliente) AdicionarConta(db *gorm.DB, conta *Conta) error {
 	conta.ClienteID = c.ID

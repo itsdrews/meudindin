@@ -8,9 +8,9 @@ import (
 
 type Conta struct {
 	ID        uint    `json:"id" gorm:"primaryKey;autoIncrement"`
-	Numero    string  `json:"numero" gorm:"not null"`
+	Numero    string  `json:"numero" gorm:"not null;uniqueIndex:idx_conta_agencia"`
+	Agencia   int     `json:"agencia" gorm:"not null;uniqueIndex:idx_conta_agencia"`
 	CodBanco  int     `json:"codBanco" gorm:"not null"`
-	Agencia   int     `json:"agencia" gorm:"not null"`
 	Tipo      string  `json:"tipo" gorm:"not null"`
 	Banco     string  `json:"banco" gorm:"not null"`
 	Saldo     float32 `json:"saldo" gorm:"not null"`
