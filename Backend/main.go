@@ -31,11 +31,18 @@ func main() {
 	r.POST("/clientes/:id/contas", controllers.AddConta)
 	r.DELETE("/clientes/:id/contas/:conta_id", controllers.RemoveConta)
 	r.GET("/clientes/:id/contas", controllers.ListContas)
+	r.PATCH("clientes/:cliente_id/contas/:conta_id", controllers.AtualizarConta)
 
 	// Rotas Metas
-	r.POST("/clientes/:id/metas", controllers.AddMeta)
-	r.DELETE("/clientes/:id/metas/:meta_id", controllers.RemoveMeta)
-	r.GET("/clientes/:id/metas", controllers.ListMetas)
+	r.POST("/clientes/:cliente_id/contas/:conta_id/metas", controllers.CriarMeta)
+	r.GET("/clientes/:cliente_id/contas/:conta_id/metas", controllers.ListarMetasPorConta)
+	r.GET("/metas/:id", controllers.ObterMetaPorID)
+	r.PATCH("/metas/:id/concluir", controllers.MarcarMetaConcluida)
+	r.PATCH("/metas/:id/nome", controllers.AtualizarNomeMeta)
+	r.PATCH("/metas/:id/valor_alvo", controllers.AtualizarValorAlvoMeta)
+	r.PATCH("/metas/:id/data_limite", controllers.AtualizarDataLimiteMeta)
+	r.PATCH("/metas/:id/progresso", controllers.AtualizarProgressoMeta)
+	r.DELETE("/metas/:id", controllers.DeletarMeta)
 
 	// Rotas Clientes
 	r.POST("/clientes", controllers.CriarCliente)
@@ -43,4 +50,4 @@ func main() {
 	r.DELETE("/clientes/:id", controllers.DeletarCliente)
 
 	r.Run(":8080")
-}
+} // TODO: TESTAR METAS PELO JSON INSOMNIA.
