@@ -38,6 +38,7 @@ func main() {
 	auth.POST("/contas", controllers.CriarConta)
 	auth.GET("/contas", controllers.ListarContas)
 	auth.DELETE("/contas/:id", controllers.RemoverConta)
+	auth.PATCH("/contas/:id",controllers.AtualizarConta)
 
 	auth.POST("/metas", controllers.CriarMeta)
 	auth.GET("/metas", controllers.ListarMetasPorConta)
