@@ -3,6 +3,7 @@ package main
 import (
 	"Backend/controllers"
 	"Backend/database"
+	"Backend/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
@@ -10,7 +11,6 @@ import (
 func main() {
 	database.Conectar()
 	controllers.SetDB(database.DB)
-
 	r := gin.Default()
 	// Configuração CORS
 	r.Use(func(c *gin.Context) {
@@ -27,27 +27,22 @@ func main() {
 		c.Next()
 	})
 
-	// Rotas Contas
-	r.POST("/clientes/:id/contas", controllers.AddConta)
-	r.DELETE("/clientes/:id/contas/:conta_id", controllers.RemoveConta)
-	r.GET("/clientes/:id/contas", controllers.ListContas)
-	r.PATCH("clientes/:cliente_id/contas/:conta_id", controllers.AtualizarConta)
-
-	// Rotas Metas
-	r.POST("/clientes/:cliente_id/contas/:conta_id/metas", controllers.CriarMeta)
-	r.GET("/clientes/:cliente_id/contas/:conta_id/metas", controllers.ListarMetasPorConta)
-	r.GET("/metas/:id", controllers.ObterMetaPorID)
-	r.PATCH("/metas/:id/concluir", controllers.MarcarMetaConcluida)
-	r.PATCH("/metas/:id/nome", controllers.AtualizarNomeMeta)
-	r.PATCH("/metas/:id/valor_alvo", controllers.AtualizarValorAlvoMeta)
-	r.PATCH("/metas/:id/data_limite", controllers.AtualizarDataLimiteMeta)
-	r.PATCH("/metas/:id/progresso", controllers.AtualizarProgressoMeta)
-	r.DELETE("/metas/:id", controllers.DeletarMeta)
-
-	// Rotas Clientes
+	// Rotas públicas
 	r.POST("/clientes", controllers.CriarCliente)
 	r.POST("/login", controllers.Login)
-	r.DELETE("/clientes/:id", controllers.DeletarCliente)
+
+	// Grupo protegido com JWT
+	auth := r.Group("/")
+	auth.Use(middlewares.JWTAuth())
+
+	auth.POST("/contas", controllers.CriarConta)
+	auth.GET("/contas", controllers.ListarContas)
+	auth.DELETE("/contas/:id", controllers.RemoverConta)
+
+	auth.POST("/metas", controllers.CriarMeta)
+	auth.GET("/metas", controllers.ListarMetasPorConta)
+	auth.PATCH("/metas/:id/concluir", controllers.MarcarMetaConcluida)
+	auth.DELETE("/metas/:id", controllers.DeletarMeta)
 
 	r.Run(":8080")
 } // TODO: TESTAR METAS PELO JSON INSOMNIA.

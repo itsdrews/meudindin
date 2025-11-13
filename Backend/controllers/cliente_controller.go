@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"Backend/models"
+	"Backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -73,40 +74,38 @@ func CriarCliente(c *gin.Context) {
 	c.JSON(http.StatusCreated, cliente)
 }
 
-// =====================
-// Login
-// =====================
+// LOGIN
 func Login(c *gin.Context) {
-	var loginData struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+	var credenciais struct {
+		Email string `json:"email"`
+		Senha string `json:"senha"`
+	}
+	if err := c.ShouldBindJSON(&credenciais); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "Dados inválidos"})
+		return
 	}
 
-	if err := c.ShouldBindJSON(&loginData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": "JSON inválido"})
-		return
-	}
-	// Substituir consulta direta por um get na entidade
 	var cliente models.Cliente
-	// Erro de Email
-	result := DB.Where("email = ?", loginData.Email).First(&cliente)
-	if result.Error != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Usuário ou senha incorretos"})
+	if err := DB.Where("email = ?", credenciais.Email).First(&cliente).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Cliente não encontrado"})
 		return
 	}
-	// Erro de Senha
-	if !CheckPasswordHash(loginData.Password, cliente.Password) {
-		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Usuário ou senha incorretos"})
-		return 
+
+	if err := bcrypt.CompareHashAndPassword([]byte(cliente.Password), []byte(credenciais.Senha)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Senha incorreta"})
+		return
+	}
+
+	//  gera o token JWT
+	token, err := utils.GerarToken(cliente.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao gerar token"})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Login realizado com sucesso",
-		"cliente": gin.H{
-			"id":    cliente.ID,
-			"nome":  cliente.Nome,
-			"email": cliente.Email,
-		},
+		"mensagem": "Login bem-sucedido",
+		"token":    token,
 	})
 }
 
