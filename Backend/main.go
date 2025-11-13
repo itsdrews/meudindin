@@ -38,12 +38,13 @@ func main() {
 	auth.POST("/contas", controllers.CriarConta)
 	auth.GET("/contas", controllers.ListarContas)
 	auth.DELETE("/contas/:id", controllers.RemoverConta)
-	auth.PATCH("/contas/:id",controllers.AtualizarConta)
+	auth.PATCH("/contas/:id", controllers.AtualizarConta)
 
-	auth.POST("/metas", controllers.CriarMeta)
-	auth.GET("/metas", controllers.ListarMetasPorConta)
-	auth.PATCH("/metas/:id/concluir", controllers.MarcarMetaConcluida)
-	auth.DELETE("/metas/:id", controllers.DeletarMeta)
+	// Rotas Metas
+	auth.POST("/contas/:id/metas", controllers.CriarMeta)          // Cria meta para conta específica
+	auth.GET("/contas/:conta_id/metas", controllers.ListarMetasPorConta) // Lista metas da conta
+	auth.PATCH("/metas/:id/concluir", controllers.MarcarMetaConcluida)   // Marca meta como concluída
+	auth.DELETE("/metas/:id", controllers.DeletarMeta)                   // Deleta meta
 
 	r.Run(":8080")
 } // TODO: TESTAR METAS PELO JSON INSOMNIA.

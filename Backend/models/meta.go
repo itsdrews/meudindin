@@ -13,7 +13,7 @@ type Meta struct {
 	DataInicio  time.Time `json:"dataInicio"`
 	DataLimite  time.Time `json:"dataLimite"`
 	Valor       float32   `json:"valor"`
-	ValorAlvo   float32   `json:"valor_alvo"`
+	ValorAlvo   float32   `json:"valor_alvo" gorm:"default:0"`
 	Concluida   bool      `json:"concluida" gorm:"default:false"`
 
 	ContaID   uint  `json:"conta_id"`
@@ -22,34 +22,34 @@ type Meta struct {
 }
 
 //
-// 🔒 MÉTODOS ENCAPSULADOS
+//  MÉTODOS ENCAPSULADOS
 //
 
-// ✅ Associar conta à meta
+// Associar conta à meta
 func (m *Meta) AssociarConta(db *gorm.DB, contaID uint) error {
 	m.ContaID = contaID
 	return db.Model(m).Update("conta_id", contaID).Error
 }
 
-// ✅ Desassociar conta da meta
+// Desassociar conta da meta
 func (m *Meta) DesassociarConta(db *gorm.DB) error {
 	m.ContaID = 0
 	return db.Model(m).Update("conta_id", nil).Error
 }
 
-// ✅ Marcar meta como concluída
+// Marcar meta como concluída
 func (m *Meta) MarcarConcluida(db *gorm.DB) error {
 	m.Concluida = true
 	return db.Model(m).Update("concluida", true).Error
 }
 
-// ✅ Atualizar nome da meta
+// Atualizar nome da meta
 func (m *Meta) AtualizarNome(db *gorm.DB, nome string) error {
 	m.Nome = nome
 	return db.Model(m).Update("nome", nome).Error
 }
 
-// ✅ Atualizar valor alvo da meta
+// Atualizar valor alvo da meta
 func (m *Meta) AtualizarValorAlvo(db *gorm.DB, valor float32) error {
 	m.ValorAlvo = valor
 	return db.Model(m).Update("valor_alvo", valor).Error

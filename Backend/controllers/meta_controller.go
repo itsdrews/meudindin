@@ -11,32 +11,49 @@ import (
 	"gorm.io/gorm"
 )
 
-// ✅ Criar meta associada a uma conta
+// Criar meta associada a uma conta (cliente autenticado)
 func CriarMeta(c *gin.Context) {
-	clienteID, err1 := strconv.ParseUint(c.Param("cliente_id"), 10, 64)
-	contaID, err2 := strconv.ParseUint(c.Param("conta_id"), 10, 64)
-	if err1 != nil || err2 != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": "IDs inválidos"})
+	//  Obtém o ID do cliente autenticado via token
+	clienteIDValue, existe := c.Get("cliente_id")
+	if !existe {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Token inválido ou ausente"})
+		return
+	}
+	clienteID, ok := clienteIDValue.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Falha ao interpretar ID do cliente"})
 		return
 	}
 
+	//  Obtém ID da conta da rota
+	contaIDParam := c.Param("id")
+	contaID64, err := strconv.ParseUint(contaIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "ID da conta inválido"})
+		return
+	}
+	contaID := uint(contaID64)
+
+	//  Faz o bind do corpo JSON
 	var meta models.Meta
 	if err := c.ShouldBindJSON(&meta); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "JSON inválido"})
 		return
 	}
 
-	meta.ClienteID = uint(clienteID)
-	meta.ContaID = uint(contaID)
+	//  Define campos obrigatórios
+	meta.ClienteID = clienteID
+	meta.ContaID = contaID
 	meta.DataInicio = time.Now()
 
+	//  Cria a meta
 	if err := DB.Create(&meta).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao criar meta"})
 		return
 	}
-
-	// Associa conta ao criar
-	if err := meta.AssociarConta(DB, uint(contaID)); err != nil {
+	//////// TO DO : REFATORAR CRIAÇÂO DE CONTA
+	//  Associa conta à meta
+	if err := meta.AssociarConta(DB, contaID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao associar conta à meta"})
 		return
 	}
@@ -47,12 +64,21 @@ func CriarMeta(c *gin.Context) {
 	})
 }
 
-// ✅ Listar metas de uma conta específica
+// Listar metas de uma conta específica (cliente autenticado)
 func ListarMetasPorConta(c *gin.Context) {
+	clienteIDValue, existe := c.Get("cliente_id")
+	if !existe {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Token inválido ou ausente"})
+		return
+	}
+	clienteID := clienteIDValue.(uint)
+
 	contaID := c.Param("conta_id")
 	var metas []models.Meta
 
-	if err := DB.Preload("Conta").Where("conta_id = ?", contaID).Find(&metas).Error; err != nil {
+	if err := DB.Preload("Conta").
+		Where("conta_id = ? AND cliente_id = ?", contaID, clienteID).
+		Find(&metas).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao listar metas"})
 		return
 	}
@@ -60,11 +86,22 @@ func ListarMetasPorConta(c *gin.Context) {
 	c.JSON(http.StatusOK, metas)
 }
 
-// ✅ Buscar meta por ID
+// Buscar meta por ID (cliente autenticado)
 func ObterMetaPorID(c *gin.Context) {
+	clienteIDValue, existe := c.Get("cliente_id")
+	if !existe {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Token inválido ou ausente"})
+		return
+	}
+	clienteID := clienteIDValue.(uint)
+
 	id := c.Param("id")
 	var meta models.Meta
-	if err := DB.Preload("Conta").First(&meta, id).Error; err != nil {
+
+	if err := DB.Preload("Conta").
+		Where("id = ? AND cliente_id = ?", id, clienteID).
+		First(&meta).Error; err != nil {
+
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"erro": "Meta não encontrada"})
 			return
@@ -72,10 +109,11 @@ func ObterMetaPorID(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao buscar meta"})
 		return
 	}
+
 	c.JSON(http.StatusOK, meta)
 }
 
-// ✅ Atualizar nome da meta
+// Atualizar nome da meta
 func AtualizarNomeMeta(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
@@ -100,7 +138,7 @@ func AtualizarNomeMeta(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"mensagem": "Nome atualizado com sucesso", "meta": meta})
 }
 
-// ✅ Atualizar valor alvo
+// Atualizar valor alvo
 func AtualizarValorAlvoMeta(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
@@ -125,7 +163,7 @@ func AtualizarValorAlvoMeta(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"mensagem": "Valor alvo atualizado com sucesso", "meta": meta})
 }
 
-// ✅ Atualizar data limite
+// Atualizar data limite
 func AtualizarDataLimiteMeta(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
@@ -156,7 +194,7 @@ func AtualizarDataLimiteMeta(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"mensagem": "Data limite atualizada com sucesso", "meta": meta})
 }
 
-// ✅ Atualizar progresso
+// Atualizar progresso
 func AtualizarProgressoMeta(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
@@ -184,7 +222,7 @@ func AtualizarProgressoMeta(c *gin.Context) {
 	})
 }
 
-// ✅ Marcar meta como concluída
+// Marcar meta como concluída
 func MarcarMetaConcluida(c *gin.Context) {
 	id := c.Param("id")
 	var meta models.Meta
@@ -201,7 +239,7 @@ func MarcarMetaConcluida(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"mensagem": "Meta concluída com sucesso", "meta": meta})
 }
 
-// ✅ Deletar meta (desassocia antes)
+// Deletar meta (desassocia antes)
 func DeletarMeta(c *gin.Context) {
 	id := c.Param("id")
 
@@ -215,7 +253,6 @@ func DeletarMeta(c *gin.Context) {
 		return
 	}
 
-	// Desassocia antes de excluir
 	if meta.ContaID != 0 {
 		if err := meta.DesassociarConta(DB); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao desassociar conta antes da exclusão"})
