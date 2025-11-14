@@ -9,7 +9,7 @@ import (
 )
 
 type criarTransacaoInput struct {
-	Tipo      string    `json:"tipo"`      // "receita" ou "despesa"
+	Tipo      string    `json:"tipo"` // "receita" ou "despesa"
 	Valor     float64   `json:"valor"`
 	Categoria string    `json:"categoria"`
 	Descricao string    `json:"descricao"`
