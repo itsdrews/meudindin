@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { GradientButton } from '../../components/ui/GradientButton';
 
@@ -135,7 +135,6 @@ const Login = () => {
   const [error, setError] = useState('');
   
   const { login } = useAuth();
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -144,7 +143,7 @@ const Login = () => {
 
     try {
       await login(email, password);
-      navigate('/home');
+      // O redirecionamento é automático via AppRoutes quando user é definido
     } catch (err) {
       setError(err.message || 'Email ou senha inválidos. Tente novamente.');
     } finally {

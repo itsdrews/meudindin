@@ -1,18 +1,19 @@
 import styled from 'styled-components';
 
 export const Card = styled.div`
-  background: ${props => props.theme.colors.card};
-  border-radius: ${props => props.theme.borderRadius.lg};
+  background: white;
+  border-radius: 16px;
   padding: ${props => props.theme.spacing.xl};
-  box-shadow: ${props => props.theme.shadows.sm};
-  border: 1px solid ${props => props.theme.colors.border};
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
   
   ${props => props.clickable && `
     cursor: pointer;
-    transition: box-shadow 0.2s ease-in-out;
     
     &:hover {
-      box-shadow: ${props.theme.shadows.md};
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+      transform: translateY(-2px);
     }
   `}
 `;
@@ -24,7 +25,7 @@ export const CardHeader = styled.div`
 export const CardTitle = styled.h3`
   font-size: 1.25rem;
   font-weight: 600;
-  color: ${props => props.theme.colors.text.primary};
+  color: #0f172a;
   margin-bottom: ${props => props.theme.spacing.xs};
 `;
 

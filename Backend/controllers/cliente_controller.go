@@ -77,8 +77,8 @@ func CriarCliente(c *gin.Context) {
 // LOGIN
 func Login(c *gin.Context) {
 	var credenciais struct {
-		Email string `json:"email"`
-		Senha string `json:"senha"`
+		Email    string `json:"email"`
+		Password string `json:"password"` // Alterado de "senha" para "password"
 	}
 	if err := c.ShouldBindJSON(&credenciais); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "Dados inválidos"})
@@ -87,12 +87,12 @@ func Login(c *gin.Context) {
 
 	var cliente models.Cliente
 	if err := DB.Where("email = ?", credenciais.Email).First(&cliente).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Cliente não encontrado"})
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Email ou senha incorretos"})
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(cliente.Password), []byte(credenciais.Senha)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Senha incorreta"})
+	if err := bcrypt.CompareHashAndPassword([]byte(cliente.Password), []byte(credenciais.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Email ou senha incorretos"})
 		return
 	}
 
@@ -103,9 +103,13 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	// Limpar senha antes de retornar
+	cliente.Password = ""
+
 	c.JSON(http.StatusOK, gin.H{
 		"mensagem": "Login bem-sucedido",
 		"token":    token,
+		"cliente":  cliente, // Retornar dados do cliente
 	})
 }
 
