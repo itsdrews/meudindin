@@ -51,10 +51,14 @@ func CriarMeta(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao criar meta"})
 		return
 	}
-	//////// TO DO : REFATORAR CRIAÇÂO DE CONTA
-	//  Associa conta à meta
+	//  Associa conta à meta por Método encapsulado
 	if err := meta.AssociarConta(DB, contaID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao associar conta à meta"})
+		return
+	}
+	// Carrega conta associada corretamente
+	if err := DB.Preload("Conta").First(&meta, meta.ID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao carregar dados da conta associada"})
 		return
 	}
 
@@ -64,8 +68,9 @@ func CriarMeta(c *gin.Context) {
 	})
 }
 
-// Listar metas de uma conta específica (cliente autenticado)
-func ListarMetasPorConta(c *gin.Context) {
+// Listar metas de um cliente autenticado (todas as contas)
+func ListarMetasPorCliente(c *gin.Context) {
+	// Recupera ID do cliente autenticado via JWT
 	clienteIDValue, existe := c.Get("cliente_id")
 	if !existe {
 		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Token inválido ou ausente"})
@@ -73,12 +78,13 @@ func ListarMetasPorConta(c *gin.Context) {
 	}
 	clienteID := clienteIDValue.(uint)
 
-	contaID := c.Param("conta_id")
 	var metas []models.Meta
 
+	// Busca todas as metas associadas a qualquer conta do cliente
 	if err := DB.Preload("Conta").
-		Where("conta_id = ? AND cliente_id = ?", contaID, clienteID).
+		Where("cliente_id = ?", clienteID).
 		Find(&metas).Error; err != nil {
+
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao listar metas"})
 		return
 	}
@@ -86,8 +92,9 @@ func ListarMetasPorConta(c *gin.Context) {
 	c.JSON(http.StatusOK, metas)
 }
 
-// Buscar meta por ID (cliente autenticado)
+// GET na meta por meta_id
 func ObterMetaPorID(c *gin.Context) {
+	// Recupera ID do cliente autenticado
 	clienteIDValue, existe := c.Get("cliente_id")
 	if !existe {
 		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Token inválido ou ausente"})
@@ -95,13 +102,23 @@ func ObterMetaPorID(c *gin.Context) {
 	}
 	clienteID := clienteIDValue.(uint)
 
-	id := c.Param("id")
+	// Converte ID do parâmetro
+	metaIDParam := c.Param("id")
+	metaID64, err := strconv.ParseUint(metaIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "ID de meta inválido"})
+		return
+	}
+	metaID := uint(metaID64)
+
 	var meta models.Meta
 
-	if err := DB.Preload("Conta").
-		Where("id = ? AND cliente_id = ?", id, clienteID).
-		First(&meta).Error; err != nil {
+	// Busca garantindo que a meta pertence ao cliente autenticado
+	err = DB.Preload("Conta").
+		Where("id = ? AND cliente_id = ?", metaID, clienteID).
+		First(&meta).Error
 
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"erro": "Meta não encontrada"})
 			return
@@ -113,9 +130,11 @@ func ObterMetaPorID(c *gin.Context) {
 	c.JSON(http.StatusOK, meta)
 }
 
-// Atualizar nome da meta
+// Atualizar nome da meta chama metodo encapsulado em Entidade Meta
 func AtualizarNomeMeta(c *gin.Context) {
 	id := c.Param("id")
+
+	// Bind do JSON
 	var req struct {
 		Nome string `json:"nome"`
 	}
@@ -124,23 +143,30 @@ func AtualizarNomeMeta(c *gin.Context) {
 		return
 	}
 
+	// Busca a meta
 	var meta models.Meta
 	if err := DB.First(&meta, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": "Meta não encontrada"})
 		return
 	}
 
+	// Chama método encapsulado na entidade
 	if err := meta.AtualizarNome(DB, req.Nome); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao atualizar nome"})
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"mensagem": "Nome atualizado com sucesso", "meta": meta})
+	c.JSON(http.StatusOK, gin.H{
+		"mensagem": "Nome atualizado com sucesso",
+		"meta":     meta,
+	})
 }
 
 // Atualizar valor alvo
 func AtualizarValorAlvoMeta(c *gin.Context) {
 	id := c.Param("id")
+
+	// Bind do JSON
 	var req struct {
 		ValorAlvo float32 `json:"valor_alvo"`
 	}
@@ -149,19 +175,25 @@ func AtualizarValorAlvoMeta(c *gin.Context) {
 		return
 	}
 
+	// Busca meta
 	var meta models.Meta
 	if err := DB.First(&meta, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": "Meta não encontrada"})
 		return
 	}
 
+	// Chama regra de negócio encapsulada
 	if err := meta.AtualizarValorAlvo(DB, req.ValorAlvo); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao atualizar valor alvo"})
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"mensagem": "Valor alvo atualizado com sucesso", "meta": meta})
+	c.JSON(http.StatusOK, gin.H{
+		"mensagem": "Valor alvo atualizado com sucesso",
+		"meta":     meta,
+	})
 }
+
 
 // Atualizar data limite
 func AtualizarDataLimiteMeta(c *gin.Context) {
@@ -197,6 +229,7 @@ func AtualizarDataLimiteMeta(c *gin.Context) {
 // Atualizar progresso
 func AtualizarProgressoMeta(c *gin.Context) {
 	id := c.Param("id")
+
 	var req struct {
 		Valor float32 `json:"valor"`
 	}
@@ -205,14 +238,16 @@ func AtualizarProgressoMeta(c *gin.Context) {
 		return
 	}
 
+	// Obtém meta
 	var meta models.Meta
 	if err := DB.First(&meta, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": "Meta não encontrada"})
 		return
 	}
 
+	// Chama método encapsulado
 	if err := meta.AtualizarProgresso(DB, req.Valor); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao atualizar progresso"})
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
@@ -222,9 +257,11 @@ func AtualizarProgressoMeta(c *gin.Context) {
 	})
 }
 
+
 // Marcar meta como concluída
 func MarcarMetaConcluida(c *gin.Context) {
 	id := c.Param("id")
+
 	var meta models.Meta
 	if err := DB.First(&meta, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": "Meta não encontrada"})
@@ -232,11 +269,14 @@ func MarcarMetaConcluida(c *gin.Context) {
 	}
 
 	if err := meta.MarcarConcluida(DB); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao marcar meta como concluída"})
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"mensagem": "Meta concluída com sucesso", "meta": meta})
+	c.JSON(http.StatusOK, gin.H{
+		"mensagem": "Meta concluída com sucesso",
+		"meta":     meta,
+	})
 }
 
 // Deletar meta (desassocia antes)
