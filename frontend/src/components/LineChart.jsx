@@ -58,9 +58,9 @@ const FilterButton = styled.button`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: ${props => props.active ? 'white' : 'transparent'};
-  color: ${props => props.active ? '#667eea' : '#64748b'};
-  box-shadow: ${props => props.active ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none'};
+  background: ${props => props.$active ? 'white' : 'transparent'};
+  color: ${props => props.$active ? '#667eea' : '#64748b'};
+  box-shadow: ${props => props.$active ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none'};
 
   &:hover {
     background: white;
@@ -279,25 +279,25 @@ const LineChart = () => {
           <FilterSection>
             <FilterGroup>
               <FilterButton 
-                active={periodType === 'daily'}
+                $active={periodType === 'daily'}
                 onClick={() => handlePeriodTypeChange('daily')}
               >
                 Diário
               </FilterButton>
               <FilterButton 
-                active={periodType === 'weekly'}
+                $active={periodType === 'weekly'}
                 onClick={() => handlePeriodTypeChange('weekly')}
               >
                 Semanal
               </FilterButton>
               <FilterButton 
-                active={periodType === 'monthly'}
+                $active={periodType === 'monthly'}
                 onClick={() => handlePeriodTypeChange('monthly')}
               >
                 Mensal
               </FilterButton>
               <FilterButton 
-                active={periodType === 'yearly'}
+                $active={periodType === 'yearly'}
                 onClick={() => handlePeriodTypeChange('yearly')}
               >
                 Anual

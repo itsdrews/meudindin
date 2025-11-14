@@ -40,6 +40,10 @@ func main() {
 	auth.DELETE("/contas/:id", controllers.RemoverConta)
 	auth.PATCH("/contas/:id", controllers.AtualizarConta)
 
+	// Transações
+	auth.POST("/transacoes", controllers.CriarTransacao)
+	auth.GET("/transacoes", controllers.ListarTransacoes)
+
 	// Rotas Metas
 	auth.POST("/contas/:id/metas", controllers.CriarMeta)              // Cria meta para conta específica
 	auth.GET("/metas", controllers.ListarMetasPorCliente)              // Lista metas da conta

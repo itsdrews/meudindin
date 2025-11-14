@@ -7,6 +7,10 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login/Login';
 import Register from './pages/Register/Register';
 import Home from './pages/Home/Home';
+import Transactions from './pages/Transactions';
+import Contas from './pages/Contas';
+import Metas from './pages/Metas';
+import MainLayout from './components/Layout/MainLayout';
 import styled from 'styled-components';
 
 const LoadingSpinner = styled.div`
@@ -33,19 +37,31 @@ const AppRoutes = () => {
     <Routes>
       <Route 
         path="/login" 
-        element={!user ? <Login /> : <Navigate to="/home" />} 
+        element={!user ? <Login /> : <Navigate to="/visaogeral" />} 
       />
       <Route 
         path="/register" 
-        element={!user ? <Register /> : <Navigate to="/home" />} 
+        element={!user ? <Register /> : <Navigate to="/visaogeral" />} 
       />
       <Route 
-        path="/home" 
-        element={user ? <Home /> : <Navigate to="/login" />} 
+        path="/visaogeral" 
+        element={user ? <MainLayout><Home /></MainLayout> : <Navigate to="/login" />} 
+      />
+      <Route 
+        path="/transacoes" 
+        element={user ? <MainLayout><Transactions /></MainLayout> : <Navigate to="/login" />} 
+      />
+      <Route 
+        path="/contas" 
+        element={user ? <MainLayout><Contas /></MainLayout> : <Navigate to="/login" />} 
+      />
+      <Route 
+        path="/metas" 
+        element={user ? <MainLayout><Metas /></MainLayout> : <Navigate to="/login" />} 
       />
       <Route 
         path="/" 
-        element={<Navigate to={user ? "/home" : "/login"} />} 
+        element={<Navigate to={user ? "/visaogeral" : "/login"} />} 
       />
     </Routes>
   );

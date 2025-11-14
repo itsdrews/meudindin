@@ -29,8 +29,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authService.login(email, password);
       
-      // Usando flag porque o back não retorna token jwt
-      localStorage.setItem('financial_token', 'authenticated');
+      // Salva o token JWT retornado pelo backend (fallback para flag)
+      const token = response.token || 'authenticated';
+      localStorage.setItem('financial_token', token);
       localStorage.setItem('user', JSON.stringify(response.cliente));
       
       setUser(response.cliente);

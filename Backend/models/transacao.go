@@ -8,8 +8,8 @@ type Transacao struct {
 	Destino       string    `json:"destino"`
 	Tipo          string    `json:"tipo"`
 	Valor         float64   `json:"valor"`
-	Data          time.Time `json:"data" gorm:"autoCreateTime"`
+	Data          time.Time `json:"data"`
 	Descricao     string    `json:"descricao"`
 	Identificador string    `json:"identificador"`
-	Conta         Conta     `json:"conta"`
+	ContaID       *uint     `json:"conta_id,omitempty" gorm:"default:null"`
 }
