@@ -41,8 +41,10 @@ func main() {
 	auth.PATCH("/contas/:id", controllers.AtualizarConta)
 
 	// Transações
-	auth.POST("/transacoes", controllers.CriarTransacao)
-	auth.GET("/transacoes", controllers.ListarTransacoes)
+	auth.GET("/contas/:id/transacoes", controllers.ListarTransacoesPorConta)
+	auth.GET("/contas/:id/transacoes/:transacaoId", controllers.ObterTransacaoPorID)
+	auth.POST("/contas/:id/transacoes", controllers.CriarTransacao)
+	auth.PATCH("/contas/:id/transacoes/:transacaoId", controllers.AtualizarIdentificadorTransacao)
 
 	// Rotas Metas
 	auth.POST("/contas/:id/metas", controllers.CriarMeta)              // Cria meta para conta específica
