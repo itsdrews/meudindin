@@ -1,7 +1,13 @@
 import api from './api';
 
 const accountService = {
-   getById: async (id) => {
+
+  create: async (data) => {
+    const res = await api.post('/contas', data);
+    return res.data;
+  },
+
+  getById: async (id) => {
     const res = await api.get(`/contas/${id}`);
     return res.data;
   },
@@ -10,6 +16,7 @@ const accountService = {
     const res = await api.get('/contas');
     return res.data;
   }
+
 };
 
 export default accountService;

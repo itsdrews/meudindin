@@ -30,8 +30,11 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.login(email, password);
       
       // Salva o token JWT retornado pelo backend (fallback para flag)
-      const token = response.token || 'authenticated';
-      localStorage.setItem('financial_token', token);
+      if (!response.token) {
+        throw new Error("Resposta inválida do servidor: token não enviado.");
+      }
+
+      localStorage.setItem("financial_token", response.token);
       localStorage.setItem('user', JSON.stringify(response.cliente));
       
       setUser(response.cliente);

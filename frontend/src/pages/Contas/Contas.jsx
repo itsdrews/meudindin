@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import accountService from '../../services/accountService';
 
+// ========== ESTILOS (mesmos da sua UI atual) ==========
 const AccountsContainer = styled.div`
   width: 100%;
-  padding: 0;
 `;
 
 const Header = styled.div`
@@ -17,16 +17,14 @@ const Header = styled.div`
 const Title = styled.h2`
   font-size: 1.75rem;
   font-weight: 700;
-  color: ${props => props.$darkMode ? '#f8fafc' : '#0f172a'};
+  color: ${p => p.$darkMode ? '#f8fafc' : '#0f172a'};
   margin: 0;
-  transition: color 0.3s ease;
 `;
 
 const Subtitle = styled.p`
   font-size: 0.95rem;
-  color: ${props => props.$darkMode ? '#a78bfa' : '#64748b'};
+  color: ${p => p.$darkMode ? '#a78bfa' : '#64748b'};
   margin: 4px 0 0 0;
-  transition: color 0.3s ease;
 `;
 
 const Actions = styled.div`
@@ -41,481 +39,236 @@ const Button = styled.button`
   padding: 12px 20px;
   border: none;
   border-radius: 12px;
-  background: ${props => props.$primary 
-    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
-    : props.$darkMode ? '#3b2167' : 'white'};
-  color: ${props => props.$primary ? 'white' : props.$darkMode ? '#c4b5fd' : '#475569'};
-  font-size: 0.875rem;
-  font-weight: 600;
+  background: ${p => p.$primary 
+    ? 'linear-gradient(135deg, #667eea, #764ba2)' 
+    : p.$darkMode ? '#3b2167' : 'white'};
+  color: ${p => p.$primary ? 'white' : p.$darkMode ? '#c4b5fd' : '#475569'};
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid ${props => props.$darkMode ? '#4c1d95' : '#e2e8f0'};
+  border: 1px solid ${p => p.$darkMode ? '#4c1d95' : '#e2e8f0'};
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px ${props => props.$primary 
-      ? 'rgba(102, 126, 234, 0.3)' 
-      : 'rgba(0, 0, 0, 0.1)'};
   }
 `;
 
-// Modal
 const ModalOverlay = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.45);
   display: flex;
-  align-items: center;
   justify-content: center;
-  z-index: 50;
+  align-items: center;
 `;
 
 const ModalCard = styled.div`
-  width: 100%;
-  max-width: 560px;
-  background: ${props => props.$darkMode ? '#2d1b4e' : 'white'};
-  border: 1px solid ${props => props.$darkMode ? '#4c1d95' : '#e2e8f0'};
-  border-radius: 16px;
+  background: ${p => p.$darkMode ? '#2d1b4e' : 'white'};
+  border: 1px solid ${p => p.$darkMode ? '#4c1d95' : '#e2e8f0'};
+  width: 500px;
   padding: 24px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  border-radius: 16px;
 `;
 
 const ModalTitle = styled.h3`
-  margin: 0 0 16px 0;
-  color: ${props => props.$darkMode ? '#f8fafc' : '#0f172a'};
-`;
-
-const FormRow = styled.div`
-  display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
-`;
-
-const FormCol = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const RadioGroup = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
-const Radio = styled.label`
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  border: 1px solid ${props => props.$darkMode ? '#4c1d95' : '#e2e8f0'};
-  background: ${props => props.$darkMode ? '#3b2167' : 'white'};
-  color: ${props => props.$darkMode ? '#f8fafc' : '#0f172a'};
-`;
-
-const FilterSection = styled.div`
-  background: ${props => props.$darkMode ? '#2d1b4e' : 'white'};
-  border-radius: 16px;
-  padding: 20px 24px;
-  margin-bottom: 24px;
-  border: 1px solid ${props => props.$darkMode ? '#4c1d95' : '#e2e8f0'};
-  transition: all 0.3s ease;
-`;
-
-const FilterRow = styled.div`
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-`;
-
-const FilterGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-  min-width: 200px;
-`;
-
-const FilterLabel = styled.label`
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: ${props => props.$darkMode ? '#c4b5fd' : '#475569'};
-  transition: color 0.3s ease;
-`;
-
-const Select = styled.select`
-  padding: 10px 14px;
-  border: 1px solid ${props => props.$darkMode ? '#4c1d95' : '#e2e8f0'};
-  border-radius: 10px;
-  background: ${props => props.$darkMode ? '#3b2167' : 'white'};
-  color: ${props => props.$darkMode ? '#f8fafc' : '#0f172a'};
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    border-color: ${props => props.$darkMode ? '#6d28d9' : '#cbd5e1'};
-  }
-
-  &:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  }
+  margin: 0 0 16px;
+  color: ${p => p.$darkMode ? 'white' : '#0f172a'};
 `;
 
 const Input = styled.input`
-  padding: 10px 14px;
-  border: 1px solid ${props => props.$darkMode ? '#4c1d95' : '#e2e8f0'};
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
   border-radius: 10px;
-  background: ${props => props.$darkMode ? '#3b2167' : 'white'};
-  color: ${props => props.$darkMode ? '#f8fafc' : '#0f172a'};
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
+  background: ${p => p.$darkMode ? '#3b2167' : 'white'};
+  color: ${p => p.$darkMode ? 'white' : '#0f172a'};
+  border: 1px solid ${p => p.$darkMode ? '#4c1d95' : '#cbd5e1'};
+`;
 
-  &::placeholder {
-    color: ${props => props.$darkMode ? '#94a3b8' : '#94a3b8'};
-  }
-
-  &:hover {
-    border-color: ${props => props.$darkMode ? '#6d28d9' : '#cbd5e1'};
-  }
-
-  &:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  }
+const Select = styled.select`
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: ${p => p.$darkMode ? '#3b2167' : 'white'};
+  color: ${p => p.$darkMode ? 'white' : '#0f172a'};
+  border: 1px solid ${p => p.$darkMode ? '#4c1d95' : '#cbd5e1'};
 `;
 
 const AccountList = styled.div`
-  background: ${props => props.$darkMode ? '#2d1b4e' : 'white'};
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+`;
+
+const AccountCard = styled.div`
+  flex: 1;
+  min-width: 340px;
+  background: ${p => p.$darkMode ? '#2d1b4e' : 'white'};
   border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid ${props => props.$darkMode ? '#4c1d95' : '#e2e8f0'};
-  transition: all 0.3s ease;
+  padding: 20px;
+  border: 1px solid ${p => p.$darkMode ? '#4c1d95' : '#e2e8f0'};
 `;
 
-const AccountItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid ${props => props.$darkMode ? '#4c1d95' : '#e2e8f0'};
-  transition: all 0.2s ease;
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  &:hover {
-    background: ${props => props.$darkMode ? 'rgba(139, 92, 246, 0.05)' : '#f8fafc'};
-    cursor: pointer;
-  }
-`;
-
-const AccountLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-`;
-
-const AccountIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: ${props => props.$color};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-`;
-
-const AccountInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`;
-
-const AccountTitle = styled.h4`
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: ${props => props.$darkMode ? '#f8fafc' : '#0f172a'};
-  margin: 0;
-  transition: color 0.3s ease;
-`;
-
-const AccountDetails = styled.div`
-  display: flex;
-  gap: 12px;
-  align-items: center;
-`;
-
-const AccountCategory = styled.span`
-  font-size: 0.8rem;
-  color: ${props => props.$darkMode ? '#a78bfa' : '#64748b'};
-  transition: color 0.3s ease;
-`;
-
-
-const AccountRight = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-`;
-
-const AccountAmount = styled.span`
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: ${props => props.$type === 'receita' ? '#10b981' : '#ef4444'};
-`;
-
-const AccountBank = styled.span`
-  font-size: 0.8rem;
-  color: ${props => props.$darkMode ? '#94a3b8' : '#64748b'};
-  transition: color 0.3s ease;
-`;
-
-const EmptyState = styled.div`
-  padding: 60px 24px;
-  text-align: center;
-  color: ${props => props.$darkMode ? '#94a3b8' : '#64748b'};
-`;
-
-const EmptyIcon = styled.div`
-  font-size: 3rem;
-  margin-bottom: 16px;
-`;
-
-const EmptyText = styled.p`
-  font-size: 1rem;
-  margin: 0;
-`;
-
-
+// ========== COMPONENTE ==========
 const Contas = ({ darkMode }) => {
   const [accounts, setAccounts] = useState([]);
-  const [filterType, setFilterType] = useState('all');
-  const [filterCategory, setFilterCategory] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const defaultReceita = ['Salário','Freelance','Venda','Rendimento'];
-  const defaultDespesa = ['Alimentação','Contas','Transporte','Lazer','Saúde'];
-  const [receitaOptions, setReceitaOptions] = useState(defaultReceita);
-  const [despesaOptions, setDespesaOptions] = useState(defaultDespesa);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ valor: '', tipo: 'receita', categoria: 'Salário', descricao: '' });
-  const [user,setUser] = useState(()=>{
-    const stored = localStorage.getItem("user");
-    return stored? JSON.parse(stored):"Usuário";
-  })
-  const categoriaOptions = form.tipo === 'receita' ? receitaOptions : despesaOptions;
-  const handleOpenModal = () => {
-    setShowModal(true);
-    fetchAccount();
-  };
-  // GET na conta por ID
-  const[selectedAccount,setSelectedAccount] = useState(null);
+
+  const [form, setForm] = useState({
+    apelido: "",
+    tipo: "Corrente",
+    banco: "",
+    agencia: "",
+    numero: "",
+    saldo: ""
+  });
+
+  // Carrega contas do backend
   useEffect(() => {
-  async function fetchAccount() {
-    if(!showModal) return;
-    try {
-      const id = 4; // exemplo — pode vir de props, rota, seleção etc.
-      const response = await accountService.getById(id);
-      setSelectedAccount(response);
-    } catch (err) {
-      console.error("Erro ao buscar conta", err);
+    async function load() {
+      const data = await accountService.list();
+      setAccounts(data);
     }
-  }
-  //IMPLEMENTAR GET CONTA BY ID NO CONTROLLER.
-    fetchAccount();
-  }, [showModal]);
-
-
-  const handleSubmit = async (e) => {
-      e.preventDefault();
-      let categoria = form.categoria;
-      // Se "Nova Categoria" com descricao definida, adiciona à lista separada por tipo
-      if (categoria === 'Nova Categoria' && form.descricao.trim()) {
-        const novaCategoria = form.descricao;
-        if (form.tipo === 'receita' && !receitaOptions.includes(novaCategoria)) {
-          setReceitaOptions(prev => [...prev, novaCategoria]);
-          categoria = novaCategoria;
-        } else if (form.tipo === 'despesa' && !despesaOptions.includes(novaCategoria)) {
-          setDespesaOptions(prev => [...prev, novaCategoria]);
-          categoria = novaCategoria;
-        } else {
-          // Se já existe, usa a categoria
-          categoria = novaCategoria;
-        }
-      }
-  
-      // Persistência no backend
-      try {
-        const payload = {
-          tipo: form.tipo,
-          valor: Number(form.valor),
-          categoria,
-          descricao: form.descricao,
-          data: new Date().toISOString(), // Adiciona data atual em formato ISO
-        };
-        const created = await transactionService.create(payload);
-  
-        // Atualiza lista local rapidamente
-        const newItem = {
-          id: created.id || Date.now(),
-          title: categoria,
-          category: categoria,
-          date: new Date().toLocaleDateString('pt-BR'),
-          amount: form.tipo === 'despesa' ? -Math.abs(Number(form.valor)) : Math.abs(Number(form.valor)),
-          type: form.tipo,
-          account: 'Conta Corrente',
-          icon: form.tipo === 'receita' ? '💰' : '🧾',
-          color: form.tipo === 'receita' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-        };
-        setTransactions(prev => [newItem, ...prev]);
-        setShowModal(false);
-      } catch (err) {
-        console.error('Erro ao criar transação', err);
-        // Mesmo em caso de erro, poderíamos manter local opcionalmente
-      }
-    };
-  // Carregar contas do backend
-  useEffect(() => {
-    const loadAccounts = async () => {
-      try {
-        const backendAccounts = await accountService.list();
-
-        const mapped = backendAccounts.map(acc => ({
-          id: acc.id,
-          title: acc.apelido || 'Conta',
-          category: acc.tipo || 'Conta',
-          num: acc.numero || 'Numero',
-          agency: acc.agencia || 'Agência',
-          amount: acc.saldo || 0,
-          type: 'conta',
-          account: acc.banco || 'Banco',
-          icon: '🏦',
-          color: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-        }));
-
-        setAccounts(mapped);
-      } catch (err) {
-        console.error('Erro ao carregar contas:', err);
-      }
-    };
-
-    loadAccounts();
+    load();
   }, []);
 
-  // Filtragem (baseado em “accounts” em vez de transactions)
-  const filteredAccounts = accounts.filter(account => {
-    const matchesSearch = account.title.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch; // pode ajustar filtros depois
-  });
+  // Salvar Nova Conta
+  const handleCreate = async (e) => {
+    e.preventDefault();
+
+    
+    const payload = {
+      numero: form.numero,
+      agencia: form.agencia ? Number(form.agencia) : 0,
+      codBanco: form.codBanco ? Number(form.codBanco) : 0,
+      tipo: form.tipo,
+      banco: form.banco,
+      saldo: form.saldo ? Number(form.saldo) : 0,
+      apelido: form.apelido,
+    };
+
+    console.log("Payload enviado:", payload);
+
+    try {
+      const response = await accountService.create(payload);
+      const novaConta = response.conta; 
+
+      setAccounts(prev => [
+        ...prev,
+        {
+          id: novaConta.id,
+          apelido: novaConta.apelido || "Conta",
+          tipo: novaConta.tipo,
+          banco: novaConta.banco,
+          numero: novaConta.numero,
+          agencia: novaConta.agencia,
+          saldo: novaConta.saldo,
+          type: "conta",
+          icon: "🏦",
+          color: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
+        }
+      ]);
+
+      setShowModal(false);
+    } catch (err) {
+      console.error("Erro ao criar conta:", err.response?.data || err.message);
+      alert(err.response?.data?.erro || "Erro ao criar conta");
+    }
+  };
 
 
   return (
     <AccountsContainer>
       <Header>
-          <div>
+        <div>
           <Title $darkMode={darkMode}>Contas</Title>
-          <Subtitle $darkMode={darkMode}>Aqui estão suas contas e seus balanços, {user?.nome} </Subtitle>
+          <Subtitle $darkMode={darkMode}>Gerencie suas contas bancárias</Subtitle>
         </div>
+
         <Actions>
-          <Button $darkMode={darkMode}>
-            🔄 Atualizar
+          <Button 
+            $primary 
+            onClick={() => setShowModal(true)}
+          >
+            ➕ Nova
           </Button>
         </Actions>
-        
       </Header>
-   
-   <AccountList $darkMode={darkMode}>
-  {filteredAccounts.length > 0 ? (
-    filteredAccounts.map(account => (
-      <AccountItem key={account.id} $darkMode={darkMode} onClick={handleOpenModal}>
-        <AccountLeft>
-          <AccountIcon $color={account.color}>
-            {account.icon}
-          </AccountIcon>
-          <AccountInfo>
-            <AccountTitle $darkMode={darkMode}>
-              {account.title}
-            </AccountTitle>
-            <AccountDetails>
-              <AccountCategory $darkMode={darkMode}>
-                {account.category}
-              </AccountCategory>
-              <span style={{ color: darkMode ? '#4c1d95' : '#cbd5e1' }}>•</span>  
-              <AccountCategory $darkMode={darkMode}>
-                 {account.num}
-              </AccountCategory>
-            </AccountDetails>
-          </AccountInfo>
-        </AccountLeft>
-        <AccountRight>
-          <AccountAmount $type="conta">
-            R$ {Math.abs(account.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </AccountAmount>
-          <AccountBank $darkMode={darkMode}>
-            {account.account}
-          </AccountBank>
-        </AccountRight>
-      </AccountItem>
-    ))
-    
-  ) 
-  : (
-    <EmptyState $darkMode={darkMode}>
-      <EmptyIcon>🔍</EmptyIcon>
-      <EmptyText>Nenhuma conta encontrada</EmptyText>
-    </EmptyState>
-  )}
-</AccountList>
-  {showModal && (
+
+      {/* LISTA */}
+      <AccountList>
+        {accounts.map(acc => (
+          <AccountCard key={acc.id} $darkMode={darkMode}>
+            <h3 style={{ margin: 0 }}>{acc.apelido}</h3>
+            <p>{acc.tipo} • {acc.banco}</p>
+            <strong>R$ {acc.saldo?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+          </AccountCard>
+        ))}
+      </AccountList>
+
+      {/* MODAL */}
+      {showModal && (
         <ModalOverlay>
           <ModalCard $darkMode={darkMode}>
-            <ModalTitle $darkMode={darkMode}>Detalhes da Conta</ModalTitle>
-            <form onSubmit={handleSubmit}>
-              <FormRow>
-                <FormCol>
-                  <FilterLabel $darkMode={darkMode}>Tipo</FilterLabel>
-                  <AccountDetails>
-                    
-                  </AccountDetails>
-                </FormCol>
-                <FormCol>
-                  <FilterLabel $darkMode={darkMode}>Apelido</FilterLabel>
-                  <Input
-                    $darkMode={darkMode}
-                    type="text"
-                    step="0.01"
-                    min="0"
-                    placeholder=""
-                    value={form.valor}
-                    onChange={(e) => setForm({ ...form, valor: e.target.value })}
-                    required
-                  />
-                </FormCol>
-              </FormRow>
+            <ModalTitle $darkMode={darkMode}>Criar Nova Conta</ModalTitle>
 
+            <form onSubmit={handleCreate}>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
-                <Button type="button" onClick={() => setShowModal(false)} $darkMode={darkMode}>Cancelar</Button>
-                <Button type="submit" $primary $darkMode={darkMode}>Salvar</Button>
+              <Input 
+                $darkMode={darkMode}
+                placeholder="Apelido (ex: Carteira, Banco)"
+                value={form.apelido}
+                onChange={e => setForm({ ...form, apelido: e.target.value })}
+                required
+              />
+
+              <Select
+                $darkMode={darkMode}
+                value={form.tipo}
+                onChange={e => setForm({ ...form, tipo: e.target.value })}
+              >
+                <option>Corrente</option>
+                <option>Poupança</option>
+                <option>Carteira</option>
+              </Select>
+
+              <Input 
+                $darkMode={darkMode}
+                placeholder="Banco"
+                value={form.banco}
+                onChange={e => setForm({ ...form, banco: e.target.value })}
+                required
+              />
+              <Input 
+                $darkMode={darkMode}
+                placeholder="Agência"
+                value={form.agencia}
+                onChange={e => setForm({ ...form, agencia: e.target.value })}
+              />
+              <Input 
+                $darkMode={darkMode}
+                placeholder="Número da Conta"
+                value={form.numero}
+                onChange={e => setForm({ ...form, numero: e.target.value })}
+              />
+              <Input 
+                $darkMode={darkMode}
+                placeholder="Saldo Inicial"
+                type="number"
+                value={form.saldo}
+                onChange={e => setForm({ ...form, saldo: e.target.value })}
+              />
+
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 16 }}>
+                <Button onClick={() => setShowModal(false)} $darkMode={darkMode}>Cancelar</Button>
+                <Button $primary type="submit">Salvar</Button>
               </div>
+
             </form>
           </ModalCard>
         </ModalOverlay>
       )}
-    
- </AccountsContainer>
 
-
-
+    </AccountsContainer>
   );
 };
 

@@ -10,7 +10,7 @@ import (
 type Meta struct {
 	ID          uint      `json:"id" gorm:"primaryKey;autoIncrement"`
 	Nome        string    `json:"nome" gorm:"not null"`
-	Description string    `json:"descricao"`
+	Descricao string `json:"descricao"`
 	DataInicio  time.Time `json:"dataInicio"`
 	DataLimite  time.Time `json:"dataLimite" `
 	Valor       float32   `json:"valor"`

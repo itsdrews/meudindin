@@ -9,7 +9,7 @@ import Register from './pages/Register/Register';
 import Home from './pages/Home/Home';
 import Transactions from './pages/Transactions';
 import Contas from './pages/Contas';
-import Metas from './pages/Metas';
+import Goals from "./pages/Goals/Goals";
 import MainLayout from './components/Layout/MainLayout';
 import styled from 'styled-components';
 
@@ -57,7 +57,7 @@ const AppRoutes = () => {
       />
       <Route 
         path="/metas" 
-        element={user ? <MainLayout><Metas /></MainLayout> : <Navigate to="/login" />} 
+        element={user ? <MainLayout><Goals /></MainLayout> : <Navigate to="/login" />} 
       />
       <Route 
         path="/" 
