@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import accountService from '../../services/accountService';
 
-// ========== ESTILOS (mesmos da sua UI atual) ==========
+// ========== ESTILOS ==========
 const AccountsContainer = styled.div`
   width: 100%;
 `;
@@ -81,6 +81,18 @@ const Input = styled.input`
   background: ${p => p.$darkMode ? '#3b2167' : 'white'};
   color: ${p => p.$darkMode ? 'white' : '#0f172a'};
   border: 1px solid ${p => p.$darkMode ? '#4c1d95' : '#cbd5e1'};
+
+   /* Bloqueia seleção e clique quando readOnly */
+  ${p => p.readOnly && `
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.75;
+    cursor: default;
+  `}
+
+  &:focus {
+    outline: none;
+  }
 `;
 
 const Select = styled.select`
@@ -102,16 +114,30 @@ const AccountList = styled.div`
 const AccountCard = styled.div`
   flex: 1;
   min-width: 340px;
-  background: ${p => p.$darkMode ? '#2d1b4e' : 'white'};
+  background:${p => p.$darkMode ? '#2d1b4e' : 'white'};
   border-radius: 16px;
   padding: 20px;
+  color: ${p => p.$darkMode ? 'white' : '#0f172a'};
   border: 1px solid ${p => p.$darkMode ? '#4c1d95' : '#e2e8f0'};
+  
+  &:hover{
+    cursor: pointer;
+    transform: scale(1.02);
+  }
 `;
 
 // ========== COMPONENTE ==========
 const Contas = ({ darkMode }) => {
   const [accounts, setAccounts] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  
+  const [selectedAccountId, setSelectedAccountId] = useState(null);
+  const [selectedAccount, setSelectedAccount] = useState(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [apelido, setApelido] = useState("");
+
+  
 
   const [form, setForm] = useState({
     apelido: "",
@@ -130,6 +156,50 @@ const Contas = ({ darkMode }) => {
     }
     load();
   }, []);
+
+    // Carrega dados da conta ao abrir modal
+  useEffect(() => {
+    if (!selectedAccountId) return;
+
+    async function fetchAccount() {
+      try {
+        const data = await accountService.getById(selectedAccountId);
+        setSelectedAccount(data);
+        setApelido(data.apelido);
+      } catch (err) {
+        console.error("Erro ao buscar conta:", err);
+      }
+    }
+
+    fetchAccount();
+  }, [selectedAccountId]);
+
+  // Salvar apenas o apelido
+  async function handleSaveApelido() {
+    try {
+      await accountService.update(selectedAccountId, { apelido });
+
+      // Atualiza lista principal
+      setAccounts(prev =>
+        prev.map(acc =>
+          acc.id === selectedAccountId ? { ...acc, apelido } : acc
+        )
+      );
+
+      setIsEditing(false);
+    } catch (err) {
+      alert("Erro ao atualizar apelido");
+      console.log(err);
+    }
+  }
+
+  const openViewModal = (id) => {
+    setSelectedAccountId(id);
+    setShowModal(true);
+    setIsEditing(false);
+  };
+
+
 
   // Salvar Nova Conta
   const handleCreate = async (e) => {
@@ -187,9 +257,8 @@ const Contas = ({ darkMode }) => {
         <Actions>
           <Button 
             $primary 
-            onClick={() => setShowModal(true)}
           >
-            ➕ Nova
+            ↻ Atualizar
           </Button>
         </Actions>
       </Header>
@@ -197,7 +266,7 @@ const Contas = ({ darkMode }) => {
       {/* LISTA */}
       <AccountList>
         {accounts.map(acc => (
-          <AccountCard key={acc.id} $darkMode={darkMode}>
+          <AccountCard key={acc.id} $darkMode={darkMode} onClick={() =>openViewModal(acc.id)}>
             <h3 style={{ margin: 0 }}>{acc.apelido}</h3>
             <p>{acc.tipo} • {acc.banco}</p>
             <strong>R$ {acc.saldo?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
@@ -205,65 +274,71 @@ const Contas = ({ darkMode }) => {
         ))}
       </AccountList>
 
-      {/* MODAL */}
-      {showModal && (
+     {/* MODAL */}
+      {showModal && selectedAccount && (
         <ModalOverlay>
           <ModalCard $darkMode={darkMode}>
-            <ModalTitle $darkMode={darkMode}>Criar Nova Conta</ModalTitle>
+            <ModalTitle $darkMode={darkMode}>
+              Conta • {selectedAccount.apelido}
+            </ModalTitle>
 
-            <form onSubmit={handleCreate}>
+            {/* CAMPOS SOMENTE LEITURA */}
+            <Input 
+              readOnly 
+              value={selectedAccount.banco}
+              $darkMode={darkMode}
+            />
 
-              <Input 
-                $darkMode={darkMode}
-                placeholder="Apelido (ex: Carteira, Banco)"
-                value={form.apelido}
-                onChange={e => setForm({ ...form, apelido: e.target.value })}
-                required
-              />
+            <Input 
+              readOnly 
+              value={`Agência: ${selectedAccount.agencia}`}
+              $darkMode={darkMode}
+            />
 
-              <Select
-                $darkMode={darkMode}
-                value={form.tipo}
-                onChange={e => setForm({ ...form, tipo: e.target.value })}
-              >
-                <option>Corrente</option>
-                <option>Poupança</option>
-                <option>Carteira</option>
-              </Select>
+            <Input 
+              readOnly 
+              value={`Número: ${selectedAccount.numero}`}
+              $darkMode={darkMode}
+            />
 
-              <Input 
-                $darkMode={darkMode}
-                placeholder="Banco"
-                value={form.banco}
-                onChange={e => setForm({ ...form, banco: e.target.value })}
-                required
-              />
-              <Input 
-                $darkMode={darkMode}
-                placeholder="Agência"
-                value={form.agencia}
-                onChange={e => setForm({ ...form, agencia: e.target.value })}
-              />
-              <Input 
-                $darkMode={darkMode}
-                placeholder="Número da Conta"
-                value={form.numero}
-                onChange={e => setForm({ ...form, numero: e.target.value })}
-              />
-              <Input 
-                $darkMode={darkMode}
-                placeholder="Saldo Inicial"
-                type="number"
-                value={form.saldo}
-                onChange={e => setForm({ ...form, saldo: e.target.value })}
-              />
+            <Input 
+              readOnly 
+              value={`Tipo: ${selectedAccount.tipo}`}
+              $darkMode={darkMode}
+            />
 
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 16 }}>
-                <Button onClick={() => setShowModal(false)} $darkMode={darkMode}>Cancelar</Button>
-                <Button $primary type="submit">Salvar</Button>
-              </div>
+            <Input 
+              readOnly 
+              value={`Saldo: R$ ${selectedAccount.saldo?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+              $darkMode={darkMode}
+            />
 
-            </form>
+            {/* CAMPO QUE PODE EDITAR */}
+            <Input 
+              $darkMode={darkMode}
+              value={apelido}
+              onChange={e => setApelido(e.target.value)}
+              readOnly={!isEditing}
+            />
+
+            {/* BOTÕES */}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 16 }}>
+
+              {!isEditing ? (
+                <>
+                  <Button onClick={() => setShowModal(false)} $darkMode={darkMode}>Fechar</Button>
+                  <Button $primary onClick={() => setIsEditing(true)}>Editar Apelido</Button>
+                </>
+              ) : (
+                <>
+                  <Button onClick={() => { setIsEditing(false); setApelido(selectedAccount.apelido); }} $darkMode={darkMode}>
+                    Cancelar
+                  </Button>
+                  <Button $primary onClick={handleSaveApelido}>Salvar</Button>
+                </>
+              )}
+
+            </div>
           </ModalCard>
         </ModalOverlay>
       )}

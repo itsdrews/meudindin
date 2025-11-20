@@ -39,6 +39,7 @@ func main() {
 	auth.GET("/contas", controllers.ListarContas)
 	auth.DELETE("/contas/:id", controllers.RemoverConta)
 	auth.PATCH("/contas/:id", controllers.AtualizarConta)
+	auth.GET("/contas/:id", controllers.BuscarContaPorID)	
 
 	// Transações
 	auth.GET("/contas/:id/transacoes", controllers.ListarTransacoesPorConta)

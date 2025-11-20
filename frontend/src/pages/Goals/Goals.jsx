@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import goalsService from "../../services/goalsService";
 import styled from "styled-components";
+import accountService from "../../services/accountService";
 
 // ====================== ESTILOS ======================
 const GoalsContainer = styled.div`width: 100%;`;
@@ -152,6 +153,26 @@ const SaveBtn = styled.button`
   font-weight: 600;
 `;
 
+const Select = styled.select`
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: ${p => p.$darkMode ? '#3b2167' : 'white'};
+  color: ${p => p.$darkMode ? 'white' : '#0f172a'};
+  border: 1px solid ${p => p.$darkMode ? '#4c1d95' : '#cbd5e1'};
+
+  ${p => p.readOnly && `
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.75;
+    cursor: default;
+  `}
+
+  &:focus { outline: none; }
+`;
+
+
 // ====================== COMPONENTE ======================
 const Goals = ({ darkMode }) => {
   const [goals, setGoals] = useState([]);
@@ -159,7 +180,23 @@ const Goals = ({ darkMode }) => {
   const [showModal, setShowModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
 
+
   const categorias = ["Investimentos", "Viagem", "Educação", "Emergência", "Compras"];
+
+  const [contas, setContas] = useState([]);
+
+  useEffect(() => {
+    async function loadAccounts() {
+      try {
+        const data = await accountService.list(); 
+        setContas(data);
+      } catch (err) {
+        console.error("Erro ao carregar contas:", err);
+      }
+    }
+
+    loadAccounts();
+  }, []);
 
   // ===== Carregar metas e contas =====
   useEffect(() => {
@@ -171,9 +208,10 @@ const Goals = ({ darkMode }) => {
             id: meta.id,
             titulo: meta.nome,
             categoria: meta.descricao || "Sem categoria",
-            total: meta.valor_alvo,
-            atual: meta.valor,
-            prazo: formatDate(meta.dataLimite)
+            total: Number(meta.valor_alvo) || 0,
+            atual: Number(meta.valor) || 0,
+            prazo: formatDate(meta.dataLimite),
+            conta_id: meta.conta_id
           }))
         );
 
@@ -200,43 +238,76 @@ const Goals = ({ darkMode }) => {
 
   // ===== Criar ou editar meta =====
   const handleSave = async (e) => {
-    e.preventDefault();
-    if (!editingGoal || !editingGoal.id) return;
+  e.preventDefault();
 
-    try {
-        const payload = {
-        nome: editingGoal.titulo,
-        descricao: editingGoal.categoria,
-        valor_alvo: Number(editingGoal.total),
-        data_limite: editingGoal.prazo,
-        valor: Number(editingGoal.atual)
-        };
+  if (!editingGoal) return;
 
-        const updated = await goalsService.update(editingGoal.id, payload);
+  try {
+    // Payload comum para criar ou editar
+    const payload = {
+      nome: editingGoal.titulo,
+      descricao: editingGoal.categoria,
+      valor_alvo: Number(editingGoal.total),
+      data_limite: editingGoal.prazo,
+      valor: Number(editingGoal.atual),
+      conta_id: editingGoal.conta_id
+    };
 
-        // Atualiza estado local para exibir imediatamente
-        setGoals(prev =>
+    let result;
+
+    if (editingGoal.id) {
+      // ------------------
+      //   EDITAR META
+      // ------------------
+      result = await goalsService.update(editingGoal.id, payload);
+
+      setGoals(prev =>
         prev.map(g =>
-            g.id === editingGoal.id
+          g.id === editingGoal.id
             ? {
                 ...g,
-                titulo: updated.nome,
-                categoria: updated.descricao,
-                total: updated.valor_alvo,
-                prazo: new Date(updated.dataLimite).toLocaleDateString("pt-BR"),
-                atual: updated.valor
-                }
+                titulo: result.nome,
+                categoria: result.descricao,
+                total: result.valor_alvo,
+                prazo: new Date(result.dataLimite).toLocaleDateString("pt-BR"),
+                atual: result.valor,
+                conta_id: result.conta_id
+              }
             : g
         )
-        );
+      );
+    } else {
+      // ------------------
+      //   CRIAR META
+      // ------------------
 
-        setEditingGoal(null);
-        setShowModal(false);
-    } catch (err) {
-        console.error("Erro ao salvar meta:", err);
-        alert("Falha ao salvar meta. Veja o console.");
+
+      result = await goalsService.create(editingGoal.conta_id,payload);
+
+      setGoals(prev => [
+        ...prev,
+        {
+          id: result.id,
+          titulo: result.nome,
+          categoria: result.descricao,
+          total: result.valor_alvo,
+          prazo: new Date(result.dataLimite).toLocaleDateString("pt-BR"),
+          atual: result.valor,
+          conta_id: result.conta_id
+        }
+      ]);
     }
-    };
+
+    // Fechar modal
+    setEditingGoal(null);
+    setShowModal(false);
+
+  } catch (err) {
+    console.error("Erro ao salvar meta:", err);
+    alert("Falha ao salvar meta.");
+  }
+};
+
 
 
   // ===== Excluir meta =====
@@ -268,7 +339,15 @@ const Goals = ({ darkMode }) => {
           <Subtitle $darkMode={darkMode}>Acompanhe suas economias</Subtitle>
         </div>
         <AddButton onClick={() => {
-          setEditingGoal({ id: null, titulo: "", categoria: "", total: 0, prazo: "", atual: 0 });
+          setEditingGoal({
+            id: null,
+            titulo: "",
+            categoria: "",
+            conta_id: "",
+            total:0,
+            atual:0       // <-- IMPORTANTE
+          });
+
           setShowModal(true);
         }}>➕ Nova</AddButton>
       </HeaderRow>
@@ -324,17 +403,10 @@ const Goals = ({ darkMode }) => {
       {showModal && (
         <ModalOverlay>
           <ModalCard $darkMode={darkMode}>
-            <button
+            <AddButton
               onClick={() => setShowModal(false)}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: darkMode ? "#c4b5fd" : "#475569",
-                fontSize: "1.1rem",
-                cursor: "pointer",
-                marginBottom: "10px"
-              }}
-            >← Voltar</button>
+
+            >Voltar</AddButton>
 
             <h3 style={{ color: darkMode ? "white" : "#0f172a" }}>
               {editingGoal.id ? "Editar Meta" : "Nova Meta"}
@@ -349,40 +421,55 @@ const Goals = ({ darkMode }) => {
                 onChange={e => setEditingGoal({...editingGoal, titulo: e.target.value})}
               />
 
-              <Input
+             <Input
+                as="select"
                 $darkMode={darkMode}
-                placeholder="Categoria"
                 required
                 value={editingGoal?.categoria || ""}
-                onChange={e => setEditingGoal({...editingGoal, categoria: e.target.value})}
-              />
+                onChange={e => setEditingGoal({ ...editingGoal, categoria: e.target.value })}
+              >
+                <option value="" disabled>Selecione uma categoria</option>
+                {categorias.map((categoria) => (
+                  <option key={categoria} value={categoria}>
+                    {categoria}
+                  </option>
+                ))}
+              </Input>
 
               <ModalRow>
                 <Input
                   $darkMode={darkMode}
                   type="number"
-                  placeholder="Total necessário"
+                  placeholder="Valor Alvo"
                   required
-                  value={editingGoal?.total || 0}
+                  value={editingGoal?.total ??" "}
                   onChange={e => setEditingGoal({...editingGoal, total: Number(e.target.value)})}
                 />
 
                 <Input
                   $darkMode={darkMode}
                   type="date"
+                  placeholder="Data Alvo (dd/mm/aaaa)"
                   required
-                  value={editingGoal?.prazo || ""}
+                  value={editingGoal?.prazo || " "}
                   onChange={e => setEditingGoal({...editingGoal, prazo: e.target.value})}
                 />
               </ModalRow>
+              <Select
+                  $darkMode={darkMode}
+                  required
+                  value={editingGoal?.conta_id || ""}
+                  onChange={e => setEditingGoal({...editingGoal, conta_id: Number(e.target.value)})}
+                >
+                  <option value="">Selecione uma conta</option>
 
-              <Input
-                $darkMode={darkMode}
-                type="number"
-                placeholder="Valor atual"
-                value={editingGoal?.atual || 0}
-                onChange={e => setEditingGoal({...editingGoal, atual: Number(e.target.value)})}
-              />
+                  {contas.map(conta => (
+                    <option key={conta.id} value={conta.id}>
+                      {conta.apelido} — {conta.banco} ({conta.numero})
+                    </option>
+                  ))}
+                </Select>
+
 
               <SaveBtn type="submit">Salvar Meta</SaveBtn>
             </form>

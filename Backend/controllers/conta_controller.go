@@ -77,6 +77,35 @@ func ListarContas(c *gin.Context) {
 
 	c.JSON(http.StatusOK, contas)
 }
+// GET /contas/:id
+func BuscarContaPorID(c *gin.Context) {
+    // Pega ID do cliente vindo do token
+    clienteIDValue, existe := c.Get("cliente_id")
+    if !existe {
+        c.JSON(http.StatusUnauthorized, gin.H{"erro": "Token inválido ou ausente"})
+        return
+    }
+    clienteID := clienteIDValue.(uint)
+
+    // ID da conta passado no parâmetro da rota
+    contaID := c.Param("id")
+
+    var conta models.Conta
+
+    // Busca a conta
+    if err := DB.First(&conta, contaID).Error; err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"erro": "Conta não encontrada"})
+        return
+    }
+
+    // Segurança: verifica se a conta pertence ao cliente logado
+    if conta.ClienteID != clienteID {
+        c.JSON(http.StatusForbidden, gin.H{"erro": "Você não tem permissão para acessar esta conta"})
+        return
+    }
+
+    c.JSON(http.StatusOK, conta)
+}
 
 // Remover Conta
 // DELETE contas/:conta_id
@@ -174,7 +203,7 @@ func AtualizarConta(c *gin.Context) {
 		return
 	}
 
-	// ✅ Atualiza os campos no modelo
+	//  Atualiza os campos no modelo
 	if err := conta.AtualizarCamposEditaveis(DB, novosCampos); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao atualizar conta", "detalhes": err.Error()})
 		return

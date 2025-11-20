@@ -1,64 +1,37 @@
-const API_URL = "http://localhost:8080";
-
-function authHeaders() {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${localStorage.getItem("financial_token")}`,
-  };
-}
+import api from "./api";
 
 const goalsService = {
-  // Listar todas as metas
-  async list() {
-    const res = await fetch(`${API_URL}/metas`, {
-      method: "GET",
-      headers: authHeaders(),
-    });
-    if (!res.ok) throw new Error("Erro ao carregar metas");
-    return res.json();
+  
+  // Listar metas
+  list: async () => {
+    const res = await api.get("/metas");
+    return res.data;
   },
 
-  // Criar meta
-  async create(contaId, data) {
-    const res = await fetch(`${API_URL}/contas/${contaId}/metas`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Erro ao criar meta");
-    return res.json();
+  // Criar meta vinculada a uma conta
+  create: async (conta_id, data) => {
+    const res = await api.post(`/contas/${conta_id}/metas`, data);
+    return res.data;
   },
 
   // Buscar meta por ID
-  async find(id) {
-    const res = await fetch(`${API_URL}/metas/${id}`, {
-      method: "GET",
-      headers: authHeaders(),
-    });
-    if (!res.ok) throw new Error("Erro ao buscar meta");
-    return res.json();
+  getById: async (id) => {
+    const res = await api.get(`/metas/${id}`);
+    return res.data;
   },
 
-  // Atualizar meta completa (nome, valor, data, categoria, etc)
-  async update(id, data) {
-    const res = await fetch(`${API_URL}/metas/${id}`, {
-      method: "PUT",
-      headers: authHeaders(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Erro ao atualizar meta");
-    return res.json();
+  // Atualizar meta existente
+  update: async (id, data) => {
+    const res = await api.put(`/metas/${id}`, data);
+    return res.data;
   },
 
   // Deletar meta
-  async remove(id) {
-    const res = await fetch(`${API_URL}/metas/${id}`, {
-      method: "DELETE",
-      headers: authHeaders(),
-    });
-    if (!res.ok) throw new Error("Erro ao deletar meta");
-    return res.json();
-  },
+  remove: async (id) => {
+    const res = await api.delete(`/metas/${id}`);
+    return res.data;
+  }
+
 };
 
 export default goalsService;
