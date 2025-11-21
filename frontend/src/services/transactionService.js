@@ -8,6 +8,9 @@ const transactionService = {
   list: async () => {
     const res = await api.get('/transacoes');
     return res.data;
+  },
+  listByAccountId: async (accountId) => {
+  return api.get(`/contas/${accountId}/transacoes`).then(res => res.data);
   }
 };
 

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import styled from 'styled-components';
 import LineChart from '../../components/LineChart';
 import SourcesChart from '../../components/SourcesChart';
+import accountService from '../../services/accountService';
 
 const HomeContainer = styled.div`
   width: 100%;
@@ -262,6 +263,26 @@ const Home = ({ darkMode }) => {
   const [showDistribution, setShowDistribution] = useState(false);
   const [showReceitas, setShowReceitas] = useState(false);
   const [showDespesas, setShowDespesas] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+  const [totalBalance, setTotalBalance] = useState(0);
+
+  useEffect(() => {
+  async function fetchAccounts() {
+    try {
+      const res = await accountService.list();
+      setAccounts(res);
+
+      // soma todos os saldos
+      const total = res.reduce((sum, acc) => sum + Number(acc.saldo || 0), 0);
+      setTotalBalance(total);
+      
+    } catch (err) {
+      console.error("Erro ao carregar contas:", err);
+    }
+  }
+
+    fetchAccounts();
+  }, []);
   
   const toggleDistribution = () => {
     setShowDistribution(!showDistribution);
@@ -295,7 +316,7 @@ const Home = ({ darkMode }) => {
                   <BalanceInfo>
                     <BalanceLabel $darkMode={darkMode}>Saldo Total</BalanceLabel>
                     <BalanceValue $darkMode={darkMode} onClick={toggleDistribution}>
-                      R$ 20.050,15
+                     R$ {totalBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </BalanceValue>
                     {showDistribution && (
                       <DistributionDropdown $darkMode={darkMode}>

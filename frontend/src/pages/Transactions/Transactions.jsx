@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import transactionService from '../../services/transactionService';
+import accountService from '../../services/accountService';
 
 const TransactionsContainer = styled.div`
   width: 100%;
@@ -312,6 +313,7 @@ const Transactions = ({ darkMode }) => {
   const [despesaOptions, setDespesaOptions] = useState(defaultDespesa);
 
   // Dados mockados de transações
+  /*
   const [transactions, setTransactions] = useState([
     {
       id: 'mock-1',
@@ -402,10 +404,12 @@ const Transactions = ({ darkMode }) => {
       color: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
     }
   ]);
-
+*/
+  const [transactions,setTransactions] = useState([]);
   const categoriaOptions = form.tipo === 'receita' ? receitaOptions : despesaOptions;
 
   // Carregar transações do backend ao montar o componente
+  /*
   useEffect(() => {
     const loadTransactions = async () => {
       try {
@@ -432,6 +436,60 @@ const Transactions = ({ darkMode }) => {
     };
     loadTransactions();
   }, []);
+  */
+
+  useEffect(() => {
+  const loadAccountsAndTransactions = async () => {
+    try {
+      // 1. Carrega todas as contas
+      const accounts = await accountService.list();
+
+      let allTransactions = [];
+
+      // 2. Para cada conta, carrega suas transações
+      for (const acc of accounts) {
+        try {
+          const trans = await transactionService.listByAccountId(acc.id);
+
+          const mapped = trans.map(t => ({
+            id: t.id,
+            title: t.titulo || 'Sem título',
+            date: new Date(t.data).toLocaleDateString('pt-BR'),
+            category:t.categoria,
+            description:t.descricao,
+            amount: t.tipo === 'despesa' ? -Math.abs(t.valor) : Math.abs(t.valor),
+            type: t.tipo,
+            third:t.origem || t.destino,
+            banco: acc.banco,
+            numBanco:acc.numero,
+            icon: t.tipo === 'receita' ? '💰' : '🧾',
+            color:
+              t.tipo === 'receita'
+                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+          }));
+
+          // Junta transações desta conta
+          allTransactions = [...allTransactions, ...mapped];
+
+        } catch (err) {
+          console.warn(`Erro ao carregar transações da conta ${acc.id}`, err);
+        }
+      }
+
+      // 3. Ordena por data (opcional)
+      allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      // 4. Atualiza estado global de transações
+      setTransactions(allTransactions);
+
+    } catch (error) {
+      console.error("Erro ao carregar contas e transações:", error);
+    }
+  };
+
+  loadAccountsAndTransactions();
+}, []);
 
   const handleOpenModal = () => {
     setShowModal(true);
@@ -561,6 +619,7 @@ const Transactions = ({ darkMode }) => {
         {filteredTransactions.length > 0 ? (
           filteredTransactions.map(transaction => (
             <TransactionItem key={transaction.id} $darkMode={darkMode}>
+              {console.log(transaction)}
               <TransactionLeft>
                 <TransactionIcon $color={transaction.color}>
                   {transaction.icon}
@@ -571,7 +630,15 @@ const Transactions = ({ darkMode }) => {
                   </TransactionTitle>
                   <TransactionDetails>
                     <TransactionCategory $darkMode={darkMode}>
-                      {transaction.category}
+                     {transaction.description} 
+                    </TransactionCategory>
+                    <span style={{ color: darkMode ? '#4c1d95' : '#cbd5e1' }}>•</span>
+                    <TransactionCategory $darkMode={darkMode}>
+                     {transaction.category} 
+                    </TransactionCategory>
+                    <span style={{ color: darkMode ? '#4c1d95' : '#cbd5e1' }}>•</span>
+                     <TransactionCategory $darkMode={darkMode}>
+                     {transaction.third} 
                     </TransactionCategory>
                     <span style={{ color: darkMode ? '#4c1d95' : '#cbd5e1' }}>•</span>
                     <TransactionDate $darkMode={darkMode}>
@@ -582,10 +649,11 @@ const Transactions = ({ darkMode }) => {
               </TransactionLeft>
               <TransactionRight>
                 <TransactionAmount $type={transaction.type}>
-                  {transaction.type === 'receita' ? '+' : ''} R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {transaction.type === 'receita' ? '+' : '-'} R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </TransactionAmount>
                 <TransactionAccount $darkMode={darkMode}>
-                  {transaction.account}
+                  {transaction.banco} <span style={{ color: darkMode ? '#4c1d95' : '#cbd5e1' }}>•</span> {transaction.numBanco}
+               
                 </TransactionAccount>
               </TransactionRight>
             </TransactionItem>

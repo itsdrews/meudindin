@@ -8,22 +8,23 @@ import (
 )
 
 type Transacao struct {
-	ID            uint      `json:"id" gorm:"primaryKey;autoincrement"`
-	Origem        string    `json:"origem"`
-	Destino       string    `json:"destino"`
-	Tipo          string    `json:"tipo"`
-	Valor         float64   `json:"valor"`
-	Data          time.Time `json:"data"`
-	Descricao     string    `json:"descricao"`
-	Identificador string    `json:"identificador"`
-	ContaID       uint      `json:"conta_id,omitempty" gorm:"not null"`
+	ID        uint      `json:"id" gorm:"primaryKey;autoincrement"`
+	Origem    string    `json:"origem"`
+	Destino   string    `json:"destino"`
+	Tipo      string    `json:"tipo"`
+	Valor     float64   `json:"valor"`
+	Data      time.Time `json:"data"`
+	Descricao string    `json:"descricao"`
+	Titulo    string    `json:"titulo"`
+	ContaID   uint      `json:"conta_id,omitempty" gorm:"not null"`
+	Category  string    `json:"categoria"`
 }
 
 func (t *Transacao) AtualizarIdentificador(db *gorm.DB, novo string) error {
 	if novo == "" {
 		return errors.New("identificador não pode ser vazio")
 	}
-	t.Identificador = novo
+	t.Titulo = novo
 	return db.Save(t).Error
 }
 func (t *Transacao) Categorizar(tipo int) error {
