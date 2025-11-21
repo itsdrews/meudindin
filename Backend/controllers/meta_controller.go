@@ -35,9 +35,18 @@ func CriarMeta(c *gin.Context) {
 	contaID := uint(contaID64)
 
 	//  Faz o bind do corpo JSON
+	/*
+		if err := c.ShouldBindJSON(&meta); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"erro": "JSON inválido"})
+			return
+			}
+	*/
 	var meta models.Meta
 	if err := c.ShouldBindJSON(&meta); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": "JSON inválido"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"erro":     "JSON inválido",
+			"detalhes": err.Error(),
+		})
 		return
 	}
 
@@ -194,7 +203,6 @@ func AtualizarValorAlvoMeta(c *gin.Context) {
 	})
 }
 
-
 // Atualizar data limite
 func AtualizarDataLimiteMeta(c *gin.Context) {
 	id := c.Param("id")
@@ -256,7 +264,6 @@ func AtualizarProgressoMeta(c *gin.Context) {
 		"meta":     meta,
 	})
 }
-
 
 // Marcar meta como concluída
 func MarcarMetaConcluida(c *gin.Context) {

@@ -210,7 +210,7 @@ const Goals = ({ darkMode }) => {
             categoria: meta.descricao || "Sem categoria",
             total: Number(meta.valor_alvo) || 0,
             atual: Number(meta.valor) || 0,
-            prazo: formatDate(meta.dataLimite),
+            prazo: meta.dataLimite,
             conta_id: meta.conta_id
           }))
         );
@@ -231,11 +231,18 @@ const Goals = ({ darkMode }) => {
   }, []);
 
   // ===== Formatador de data =====
-  const formatDate = (isoDate) => {
-    const d = new Date(isoDate);
-    return d.toLocaleDateString("pt-BR");
-  };
+  const formatDate = (iso) => {
+    if (!iso) return "";
 
+    const date = new Date(iso);
+    if (isNaN(date)) return "Data inválida";
+
+    return date.toLocaleDateString("pt-BR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    });
+  };
   // ===== Criar ou editar meta =====
   const handleSave = async (e) => {
   e.preventDefault();
@@ -248,7 +255,7 @@ const Goals = ({ darkMode }) => {
       nome: editingGoal.titulo,
       descricao: editingGoal.categoria,
       valor_alvo: Number(editingGoal.total),
-      data_limite: editingGoal.prazo,
+      data_limite:new Date(editingGoal.prazo).toISOString(),
       valor: Number(editingGoal.atual),
       conta_id: editingGoal.conta_id
     };
@@ -269,7 +276,7 @@ const Goals = ({ darkMode }) => {
                 titulo: result.nome,
                 categoria: result.descricao,
                 total: result.valor_alvo,
-                prazo: new Date(result.dataLimite).toLocaleDateString("pt-BR"),
+                data_limite: result.data_limite,
                 atual: result.valor,
                 conta_id: result.conta_id
               }
@@ -291,7 +298,7 @@ const Goals = ({ darkMode }) => {
           titulo: result.nome,
           categoria: result.descricao,
           total: result.valor_alvo,
-          prazo: new Date(result.dataLimite).toLocaleDateString("pt-BR"),
+          data_limite: result.data_limite,
           atual: result.valor,
           conta_id: result.conta_id
         }
@@ -301,6 +308,7 @@ const Goals = ({ darkMode }) => {
     // Fechar modal
     setEditingGoal(null);
     setShowModal(false);
+    window.location.reload();
 
   } catch (err) {
     console.error("Erro ao salvar meta:", err);
@@ -382,7 +390,7 @@ const Goals = ({ darkMode }) => {
               </GoalHeader>
 
               <span style={{ color: darkMode ? "#c4b5fd" : "#64748b" }}>
-                R$ {goal.total.toLocaleString("pt-BR")} até {goal.prazo}
+                R$ {goal.total} até {formatDate(goal.data_limite)}
               </span>
 
               <ProgressBar $darkMode={darkMode}>
@@ -391,8 +399,8 @@ const Goals = ({ darkMode }) => {
 
               <GoalFooter $darkMode={darkMode}>
                 <span>{percent}%</span>
-                <span>R$ {goal.atual.toLocaleString("pt-BR")}</span>
-                <span>Faltam: R$ {(goal.total - goal.atual).toLocaleString("pt-BR")}</span>
+                <span>R$ {goal.atual}</span>
+                <span>Faltam: R$ {(goal.total - goal.atual)}</span>
               </GoalFooter>
             </GoalCard>
           );
@@ -421,8 +429,7 @@ const Goals = ({ darkMode }) => {
                 onChange={e => setEditingGoal({...editingGoal, titulo: e.target.value})}
               />
 
-             <Input
-                as="select"
+             <Select
                 $darkMode={darkMode}
                 required
                 value={editingGoal?.categoria || ""}
@@ -434,12 +441,12 @@ const Goals = ({ darkMode }) => {
                     {categoria}
                   </option>
                 ))}
-              </Input>
+              </Select>
 
               <ModalRow>
                 <Input
                   $darkMode={darkMode}
-                  type="number"
+                  type="text"
                   placeholder="Valor Alvo"
                   required
                   value={editingGoal?.total ??" "}
@@ -449,19 +456,21 @@ const Goals = ({ darkMode }) => {
                 <Input
                   $darkMode={darkMode}
                   type="date"
-                  placeholder="Data Alvo (dd/mm/aaaa)"
+                  placeholder="Prazo"
                   required
                   value={editingGoal?.prazo || " "}
                   onChange={e => setEditingGoal({...editingGoal, prazo: e.target.value})}
+                  
                 />
               </ModalRow>
               <Select
                   $darkMode={darkMode}
                   required
                   value={editingGoal?.conta_id || ""}
+
                   onChange={e => setEditingGoal({...editingGoal, conta_id: Number(e.target.value)})}
                 >
-                  <option value="">Selecione uma conta</option>
+                  <option value="" disabled>Selecione uma conta</option>
 
                   {contas.map(conta => (
                     <option key={conta.id} value={conta.id}>

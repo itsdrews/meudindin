@@ -256,7 +256,9 @@ const Contas = ({ darkMode }) => {
 
         <Actions>
           <Button 
-            $primary 
+            $primary onClick={() =>{setTimeout(()=>{
+              window.location.reload()
+            },500)}}
           >
             ↻ Atualizar
           </Button>
@@ -265,13 +267,17 @@ const Contas = ({ darkMode }) => {
 
       {/* LISTA */}
       <AccountList>
-        {accounts.map(acc => (
+        {accounts.length >0? accounts.map(acc => (
           <AccountCard key={acc.id} $darkMode={darkMode} onClick={() =>openViewModal(acc.id)}>
             <h3 style={{ margin: 0 }}>{acc.apelido}</h3>
             <p>{acc.tipo} • {acc.banco}</p>
             <strong>R$ {acc.saldo?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
           </AccountCard>
-        ))}
+        )):(
+  <p style={{ opacity: 0.7, fontStyle: "italic", marginTop: "1rem" }}>
+    Nenhuma conta sincronizada ainda.
+  </p>
+)}
       </AccountList>
 
      {/* MODAL */}
