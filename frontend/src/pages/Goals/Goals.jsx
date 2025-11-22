@@ -210,7 +210,7 @@ const Goals = ({ darkMode }) => {
             categoria: meta.descricao || "Sem categoria",
             total: Number(meta.valor_alvo) || 0,
             atual: Number(meta.valor) || 0,
-            prazo: meta.dataLimite,
+            data_limite: meta.data_limite || meta.dataLimite || "",
             conta_id: meta.conta_id
           }))
         );
@@ -255,9 +255,9 @@ const Goals = ({ darkMode }) => {
       nome: editingGoal.titulo,
       descricao: editingGoal.categoria,
       valor_alvo: Number(editingGoal.total),
-      data_limite:new Date(editingGoal.prazo).toISOString(),
+      data_limite: editingGoal.prazo,
       valor: Number(editingGoal.atual),
-      conta_id: editingGoal.conta_id
+      conta_id: Number(editingGoal.conta_id)
     };
 
     let result;
@@ -266,19 +266,19 @@ const Goals = ({ darkMode }) => {
       // ------------------
       //   EDITAR META
       // ------------------
-      result = await goalsService.update(editingGoal.id, payload);
+      await goalsService.update(editingGoal.id, payload);
 
       setGoals(prev =>
         prev.map(g =>
           g.id === editingGoal.id
             ? {
                 ...g,
-                titulo: result.nome,
-                categoria: result.descricao,
-                total: result.valor_alvo,
-                data_limite: result.data_limite,
-                atual: result.valor,
-                conta_id: result.conta_id
+                titulo: payload.nome,
+                categoria: payload.descricao,
+                total: payload.valor_alvo,
+                atual: payload.valor,
+                data_limite: payload.data_limite,
+                conta_id: payload.conta_id
               }
             : g
         )
@@ -289,7 +289,7 @@ const Goals = ({ darkMode }) => {
       // ------------------
 
 
-      result = await goalsService.create(editingGoal.conta_id,payload);
+      result = await goalsService.create(Number(editingGoal.conta_id), payload);
 
       setGoals(prev => [
         ...prev,
@@ -351,9 +351,10 @@ const Goals = ({ darkMode }) => {
             id: null,
             titulo: "",
             categoria: "",
-            conta_id: "",
-            total:0,
-            atual:0       // <-- IMPORTANTE
+            conta_id: null,
+            total: 0,
+            atual: 0,
+            prazo: ""
           });
 
           setShowModal(true);
@@ -449,7 +450,7 @@ const Goals = ({ darkMode }) => {
                   type="text"
                   placeholder="Valor Alvo"
                   required
-                  value={editingGoal?.total ??" "}
+                  value={editingGoal?.total || ""}
                   onChange={e => setEditingGoal({...editingGoal, total: Number(e.target.value)})}
                 />
 
@@ -458,7 +459,7 @@ const Goals = ({ darkMode }) => {
                   type="date"
                   placeholder="Prazo"
                   required
-                  value={editingGoal?.prazo || " "}
+                  value={editingGoal?.prazo || ""}
                   onChange={e => setEditingGoal({...editingGoal, prazo: e.target.value})}
                   
                 />

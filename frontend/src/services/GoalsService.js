@@ -22,8 +22,35 @@ const goalsService = {
 
   // Atualizar meta existente
   update: async (id, data) => {
-    const res = await api.put(`/metas/${id}`, data);
-    return res.data;
+    const results = {};
+
+    // Atualizar nome
+    if (data.nome !== undefined) {
+      const r = await api.patch(`/metas/${id}/nome`, { nome: data.nome });
+      results.nome = r.data;
+    }
+
+    // Atualizar valor alvo
+    if (data.valor_alvo !== undefined) {
+      const r = await api.patch(`/metas/${id}/valor-alvo`, { valor_alvo: data.valor_alvo });
+      results.valor_alvo = r.data;
+    }
+
+    // Atualizar data limite
+    if (data.data_limite !== undefined) {
+      const r = await api.patch(`/metas/${id}/data-limite`, {
+        data_limite: data.data_limite.split("T")[0]
+      });
+      results.data_limite = r.data;
+    }
+
+    // Atualizar progresso (valor atual)
+    if (data.valor !== undefined) {
+      const r = await api.patch(`/metas/${id}/progresso`, { valor: data.valor });
+      results.valor = r.data;
+    }
+
+    return results;
   },
 
   // Deletar meta

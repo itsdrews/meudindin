@@ -13,19 +13,15 @@ import (
 
 // Criar meta associada a uma conta (cliente autenticado)
 func CriarMeta(c *gin.Context) {
-	//  Obtém o ID do cliente autenticado via token
+	//  Obtém ID do cliente autenticado via token
 	clienteIDValue, existe := c.Get("cliente_id")
 	if !existe {
 		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Token inválido ou ausente"})
 		return
 	}
-	clienteID, ok := clienteIDValue.(uint)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Falha ao interpretar ID do cliente"})
-		return
-	}
+	clienteID := clienteIDValue.(uint)
 
-	//  Obtém ID da conta da rota
+	// ID da conta via rota
 	contaIDParam := c.Param("id")
 	contaID64, err := strconv.ParseUint(contaIDParam, 10, 64)
 	if err != nil {
@@ -34,40 +30,42 @@ func CriarMeta(c *gin.Context) {
 	}
 	contaID := uint(contaID64)
 
-	//  Faz o bind do corpo JSON
-	/*
-		if err := c.ShouldBindJSON(&meta); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"erro": "JSON inválido"})
-			return
-			}
-	*/
-	var meta models.Meta
-	if err := c.ShouldBindJSON(&meta); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"erro":     "JSON inválido",
-			"detalhes": err.Error(),
-		})
+	// ======== BIND ESPECÍFICO DO JSON ========
+	var body struct {
+		Nome       string  `json:"nome"`
+		Descricao  string  `json:"descricao"`
+		DataLimite string  `json:"data_limite"`
+		Valor      float32 `json:"valor"`
+		ValorAlvo  float32 `json:"valor_alvo"`
+	}
+
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "JSON inválido", "detalhes": err.Error()})
 		return
 	}
 
-	//  Define campos obrigatórios
-	meta.ClienteID = clienteID
-	meta.ContaID = contaID
-	meta.DataInicio = time.Now()
+	// ======== PARSE DA DATA ========
+	dataLimite, err := time.Parse("2006-01-02", body.DataLimite)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "Data inválida. Use YYYY-MM-DD"})
+		return
+	}
 
-	//  Cria a meta
+	// ======== CRIA OBJETO META ========
+	meta := models.Meta{
+		Nome:       body.Nome,
+		Descricao:  body.Descricao,
+		DataInicio: time.Now(),
+		DataLimite: dataLimite,
+		Valor:      body.Valor,
+		ValorAlvo:  body.ValorAlvo,
+		ClienteID:  clienteID,
+		ContaID:    contaID,
+	}
+
+	// ======== CRIAR META NO BANCO ========
 	if err := DB.Create(&meta).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao criar meta"})
-		return
-	}
-	//  Associa conta à meta por Método encapsulado
-	if err := meta.AssociarConta(DB, contaID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao associar conta à meta"})
-		return
-	}
-	// Carrega conta associada corretamente
-	if err := DB.Preload("Conta").First(&meta, meta.ID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao carregar dados da conta associada"})
 		return
 	}
 

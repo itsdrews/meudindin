@@ -15,7 +15,7 @@ func main() {
 	// Configuração CORS
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 
@@ -39,7 +39,7 @@ func main() {
 	auth.GET("/contas", controllers.ListarContas)
 	auth.DELETE("/contas/:id", controllers.RemoverConta)
 	auth.PATCH("/contas/:id", controllers.AtualizarConta)
-	auth.GET("/contas/:id", controllers.BuscarContaPorID)	
+	auth.GET("/contas/:id", controllers.BuscarContaPorID)
 
 	// Transações
 	auth.GET("/contas/:id/transacoes", controllers.ListarTransacoesPorConta)

@@ -12,7 +12,7 @@ type Meta struct {
 	Nome       string    `json:"nome" gorm:"not null"`
 	Descricao  string    `json:"descricao"`
 	DataInicio time.Time `json:"dataInicio"`
-	DataLimite time.Time `json:"data_limite"`
+	DataLimite time.Time `json:"data_limite" gorm:"column:data_limite"`
 	Valor      float32   `json:"valor" gorm:"defalt:0"`
 	ValorAlvo  float32   `json:"valor_alvo" gorm:"default:0"`
 	Concluida  bool      `json:"concluida" gorm:"default:false"`
@@ -86,7 +86,7 @@ func (m *Meta) AtualizarValorAlvo(db *gorm.DB, novoValor float32) error {
 // Atualizar data limite
 func (m *Meta) AtualizarDataLimite(db *gorm.DB, data time.Time) error {
 	m.DataLimite = data
-	return db.Model(m).Update("dataLimite", data).Error
+	return db.Model(m).Update("data_limite", data).Error
 }
 
 // Atualizar progresso e verificar conclusão automática
