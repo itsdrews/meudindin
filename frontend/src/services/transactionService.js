@@ -1,11 +1,11 @@
 import api from './api';
 
 const transactionService = {
-  create: async (payload) => {
-    const res = await api.post('/transacoes', payload);
+  create: async (accountId, payload) => {
+    const res = await api.post(`/contas/${accountId}/transacoes`, payload);
     return res.data;
   },
-  list: async () => {
+  listAll: async () => {
     const res = await api.get('/transacoes');
     return res.data;
   },

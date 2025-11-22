@@ -406,6 +406,7 @@ const Transactions = ({ darkMode }) => {
   ]);
 */
   const [transactions,setTransactions] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const categoriaOptions = form.tipo === 'receita' ? receitaOptions : despesaOptions;
 
   // Carregar transações do backend ao montar o componente
@@ -443,6 +444,7 @@ const Transactions = ({ darkMode }) => {
     try {
       // 1. Carrega todas as contas
       const accounts = await accountService.list();
+      setAccounts(accounts);
 
       let allTransactions = [];
 
@@ -523,7 +525,8 @@ const Transactions = ({ darkMode }) => {
         descricao: form.descricao,
         data: new Date().toISOString(), // Adiciona data atual em formato ISO
       };
-      const created = await transactionService.create(payload);
+      const accountId = accounts[0].id;
+      const created = await transactionService.create(accountId, payload);
 
       // Atualiza lista local rapidamente
       const newItem = {
