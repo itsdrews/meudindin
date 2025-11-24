@@ -533,12 +533,15 @@ const Transactions = ({ darkMode }) => {
         id: created.id || Date.now(),
         title: categoria,
         category: categoria,
+        description: form.descricao,
         date: new Date().toLocaleDateString('pt-BR'),
         amount: form.tipo === 'despesa' ? -Math.abs(Number(form.valor)) : Math.abs(Number(form.valor)),
         type: form.tipo,
         account: 'Conta Corrente',
         icon: form.tipo === 'receita' ? '💰' : '🧾',
         color: form.tipo === 'receita' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+        banco: accounts[0].banco,
+        numBanco: accounts[0].numero,
       };
       setTransactions(prev => [newItem, ...prev]);
       setShowModal(false);
