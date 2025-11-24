@@ -19,7 +19,11 @@ const accountService = {
   list: async () => {
     const res = await api.get('/contas');
     return res.data;
-  }
+  },
+  updateAll: async () => {
+    const res = await api.patch("/contas/atualizar-saldos", {});
+    return res.data;
+}
 
 };
 

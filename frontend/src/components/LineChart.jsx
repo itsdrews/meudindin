@@ -255,19 +255,150 @@ const periodOptions = {
     { value: 3, label: 'Últimos 3 anos' }
   ]
 };
+const mergeRealData = (receitas, despesas) => {
+  const map = {};
 
-const LineChart = () => {
+  receitas.forEach(item => {
+    map[item.name] = {
+      label: item.name,
+      receitas: item.value,
+      despesas: 0
+    };
+  });
+
+  despesas.forEach(item => {
+    if (!map[item.name]) {
+      map[item.name] = {
+        label: item.name,
+        receitas: 0,
+        despesas: item.value
+      };
+    } else {
+      map[item.name].despesas = item.value;
+    }
+  });
+
+  return Object.values(map);
+};
+const LineChart = ({ receitasData = [], despesasData = [] }) => {
   const theme = useTheme();
   const [periodType, setPeriodType] = useState('monthly');
   const [periodRange, setPeriodRange] = useState(6);
 
-  const chartData = useMemo(() => {
-    return generateMockData(periodType, periodRange);
-  }, [periodType, periodRange]);
+  // -----------------------------------------------------------
+  // 1) Função que calcula o RANGE de datas (início/fim)
+  // -----------------------------------------------------------
+  const getPeriodDateRange = (type, range) => {
+    const now = new Date();
+    let start;
 
+    switch (type) {
+      case "daily":
+        start = new Date(now);
+        start.setDate(start.getDate() - range);
+        break;
+
+      case "weekly":
+        start = new Date(now);
+        start.setDate(start.getDate() - range * 7);
+        break;
+
+      case "monthly":
+        start = new Date(now);
+        start.setMonth(start.getMonth() - range);
+        break;
+
+      case "yearly":
+        start = new Date(now);
+        start.setFullYear(start.getFullYear() - range);
+        break;
+
+      default:
+        return null;
+    }
+
+    return { start, end: now };
+  };
+
+  // -----------------------------------------------------------
+  // 2) Função que gera UMA CHAVE de agrupamento (dia, semana, mês, ano)
+  // -----------------------------------------------------------
+  const getGroupKey = (date, type) => {
+    const d = new Date(date);
+
+    if (type === "daily") {
+      return d.toLocaleDateString("pt-BR");
+    }
+
+    if (type === "weekly") {
+      const week = Math.ceil(d.getDate() / 7);
+      return `${d.getMonth() + 1}/${week}`;
+    }
+
+    if (type === "monthly") {
+      return `${d.getMonth() + 1}/${d.getFullYear()}`;
+    }
+
+    if (type === "yearly") {
+      return `${d.getFullYear()}`;
+    }
+  };
+
+  // -----------------------------------------------------------
+  // 3) Filtrar e agrupar dados reais
+  // -----------------------------------------------------------
+  const buildRealChartData = () => {
+    const hasReal = receitasData.length > 0 || despesasData.length > 0;
+    if (!hasReal) return null;
+
+    const { start, end } = getPeriodDateRange(periodType, periodRange);
+
+    const groupMap = {};
+
+    const process = (arr, typeKey) => {
+      arr.forEach(item => {
+        if (!item.data) return;
+
+        const dataItem = new Date(item.data);
+        if (dataItem < start || dataItem > end) return;
+
+        const group = getGroupKey(item.data, periodType);
+
+        if (!groupMap[group]) {
+          groupMap[group] = { label: group, receitas: 0, despesas: 0 };
+        }
+
+        const value = Number(item.valor || item.value || 0);
+
+        if (typeKey === "receitas") groupMap[group].receitas += value;
+        else groupMap[group].despesas += value;
+      });
+    };
+
+    process(receitasData, "receitas");
+    process(despesasData, "despesas");
+
+    return Object.values(groupMap).sort((a, b) =>
+      new Date(a.label) - new Date(b.label)
+    );
+  };
+
+  // -----------------------------------------------------------
+  // 4) Decide se usa dados reais ou mockados
+  // -----------------------------------------------------------
+  const chartData = useMemo(() => {
+    const real = buildRealChartData();
+    if (real && real.length > 0) return real;
+
+    // fallback para mock
+    return generateMockData(periodType, periodRange);
+  }, [periodType, periodRange, receitasData, despesasData]);
+
+  // -----------------------------------------------------------
+  // 5) Handler para trocar período
+  // -----------------------------------------------------------
   const handlePeriodTypeChange = (type) => {
     setPeriodType(type);
-    // Define o primeiro valor disponível para o novo tipo de período
     setPeriodRange(periodOptions[type][0].value);
   };
 
@@ -276,38 +407,24 @@ const LineChart = () => {
       <ChartHeader>
         <HeaderLeft>
           <ChartTitle>Receitas vs Despesas</ChartTitle>
+
           <FilterSection>
             <FilterGroup>
-              <FilterButton 
-                $active={periodType === 'daily'}
-                onClick={() => handlePeriodTypeChange('daily')}
-              >
+              <FilterButton $active={periodType === 'daily'} onClick={() => handlePeriodTypeChange('daily')}>
                 Diário
               </FilterButton>
-              <FilterButton 
-                $active={periodType === 'weekly'}
-                onClick={() => handlePeriodTypeChange('weekly')}
-              >
+              <FilterButton $active={periodType === 'weekly'} onClick={() => handlePeriodTypeChange('weekly')}>
                 Semanal
               </FilterButton>
-              <FilterButton 
-                $active={periodType === 'monthly'}
-                onClick={() => handlePeriodTypeChange('monthly')}
-              >
+              <FilterButton $active={periodType === 'monthly'} onClick={() => handlePeriodTypeChange('monthly')}>
                 Mensal
               </FilterButton>
-              <FilterButton 
-                $active={periodType === 'yearly'}
-                onClick={() => handlePeriodTypeChange('yearly')}
-              >
+              <FilterButton $active={periodType === 'yearly'} onClick={() => handlePeriodTypeChange('yearly')}>
                 Anual
               </FilterButton>
             </FilterGroup>
-            
-            <Select 
-              value={periodRange} 
-              onChange={(e) => setPeriodRange(Number(e.target.value))}
-            >
+
+            <Select value={periodRange} onChange={(e) => setPeriodRange(Number(e.target.value))}>
               {periodOptions[periodType].map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -320,50 +437,27 @@ const LineChart = () => {
 
       <ChartWrapper>
         <ResponsiveContainer width="100%" height="100%">
-          <RechartsLineChart
-            data={chartData}
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-          >
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke="#e2e8f0"
-              opacity={0.5}
-            />
-            <XAxis 
-              dataKey="label" 
-              stroke="#64748b"
-              style={{ fontSize: '0.875rem' }}
-            />
-            <YAxis 
+          <RechartsLineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
+
+            <XAxis dataKey="label" stroke="#64748b" style={{ fontSize: '0.875rem' }} />
+
+            <YAxis
               stroke="#64748b"
               style={{ fontSize: '0.875rem' }}
               tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
             />
+
             <Tooltip content={<CustomTooltipContent />} />
-            <Legend 
-              wrapperStyle={{
-                paddingTop: '20px',
-                fontSize: '0.875rem'
-              }}
-              iconType="circle"
+
+            <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '0.875rem' }} iconType="circle" />
+
+            <Line type="monotone" dataKey="receitas" name="Receitas" stroke="#10b981" strokeWidth={3}
+              dot={{ fill: '#10b981', r: 5 }} activeDot={{ r: 7 }}
             />
-            <Line 
-              type="monotone" 
-              dataKey="receitas" 
-              name="Receitas"
-              stroke="#10b981" 
-              strokeWidth={3}
-              dot={{ fill: '#10b981', r: 5 }}
-              activeDot={{ r: 7 }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="despesas" 
-              name="Despesas"
-              stroke="#ef4444" 
-              strokeWidth={3}
-              dot={{ fill: '#ef4444', r: 5 }}
-              activeDot={{ r: 7 }}
+
+            <Line type="monotone" dataKey="despesas" name="Despesas" stroke="#ef4444" strokeWidth={3}
+              dot={{ fill: '#ef4444', r: 5 }} activeDot={{ r: 7 }}
             />
           </RechartsLineChart>
         </ResponsiveContainer>
@@ -371,5 +465,6 @@ const LineChart = () => {
     </ChartContainer>
   );
 };
+
 
 export default LineChart;

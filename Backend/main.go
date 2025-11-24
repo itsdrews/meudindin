@@ -35,6 +35,7 @@ func main() {
 	auth := r.Group("/")
 	auth.Use(middlewares.JWTAuth())
 
+	auth.PATCH("/contas/atualizar-saldos", controllers.AtualizarSaldoTodasContas)
 	auth.POST("/contas", controllers.CriarConta)
 	auth.GET("/contas", controllers.ListarContas)
 	auth.DELETE("/contas/:id", controllers.RemoverConta)

@@ -3,6 +3,7 @@ package controllers
 import (
 	"Backend/models"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -77,34 +78,35 @@ func ListarContas(c *gin.Context) {
 
 	c.JSON(http.StatusOK, contas)
 }
+
 // GET /contas/:id
 func BuscarContaPorID(c *gin.Context) {
-    // Pega ID do cliente vindo do token
-    clienteIDValue, existe := c.Get("cliente_id")
-    if !existe {
-        c.JSON(http.StatusUnauthorized, gin.H{"erro": "Token inválido ou ausente"})
-        return
-    }
-    clienteID := clienteIDValue.(uint)
+	// Pega ID do cliente vindo do token
+	clienteIDValue, existe := c.Get("cliente_id")
+	if !existe {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Token inválido ou ausente"})
+		return
+	}
+	clienteID := clienteIDValue.(uint)
 
-    // ID da conta passado no parâmetro da rota
-    contaID := c.Param("id")
+	// ID da conta passado no parâmetro da rota
+	contaID := c.Param("id")
 
-    var conta models.Conta
+	var conta models.Conta
 
-    // Busca a conta
-    if err := DB.First(&conta, contaID).Error; err != nil {
-        c.JSON(http.StatusNotFound, gin.H{"erro": "Conta não encontrada"})
-        return
-    }
+	// Busca a conta
+	if err := DB.First(&conta, contaID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "Conta não encontrada"})
+		return
+	}
 
-    // Segurança: verifica se a conta pertence ao cliente logado
-    if conta.ClienteID != clienteID {
-        c.JSON(http.StatusForbidden, gin.H{"erro": "Você não tem permissão para acessar esta conta"})
-        return
-    }
+	// Segurança: verifica se a conta pertence ao cliente logado
+	if conta.ClienteID != clienteID {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "Você não tem permissão para acessar esta conta"})
+		return
+	}
 
-    c.JSON(http.StatusOK, conta)
+	c.JSON(http.StatusOK, conta)
 }
 
 // Remover Conta
@@ -212,5 +214,61 @@ func AtualizarConta(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"mensagem": "Conta atualizada com sucesso",
 		"conta":    conta,
+	})
+}
+
+// PATCH /contas/atualizar-saldos
+func AtualizarSaldoTodasContas(c *gin.Context) {
+	// ID do cliente autenticado
+	clienteIDValue, existe := c.Get("cliente_id")
+	if !existe {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Token inválido ou ausente"})
+		return
+	}
+	clienteID := clienteIDValue.(uint)
+
+	// Buscar todas as contas do cliente
+	var contas []models.Conta
+	if err := DB.Where("cliente_id = ?", clienteID).Find(&contas).Error; err != nil {
+		fmt.Println("ERRO: Falha ao buscar contas ->", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao buscar contas"})
+		return
+	}
+
+	if len(contas) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "Nenhuma conta encontrada para este cliente"})
+		return
+	}
+
+	// Atualiza saldo uma por uma
+	for i := range contas {
+
+		fmt.Println("---- ATUALIZANDO SALDO DA CONTA ----")
+		fmt.Println("Conta ID:", contas[i].ID)
+
+		if err := contas[i].AtualizaSaldo(DB); err != nil {
+
+			// SENTINELA DE DEBUG
+			fmt.Println("⚠️ ERRO AO CALCULAR SALDO")
+			fmt.Println("Conta:", contas[i].ID)
+			fmt.Println("Erro:", err)
+
+			// DEBUG avançado: query usada
+			stmt := DB.Statement
+			fmt.Println("SQL gerado:", stmt.SQL.String())
+			fmt.Println("Vars:", stmt.Vars)
+
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"erro":    "Erro ao atualizar saldo de uma conta",
+				"conta":   contas[i].ID,
+				"detalhe": err.Error(),
+			})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"mensagem":   "Saldos de todas as contas foram atualizados com sucesso!",
+		"quantidade": len(contas),
 	})
 }

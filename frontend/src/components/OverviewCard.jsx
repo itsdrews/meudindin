@@ -2,6 +2,7 @@ import React from 'react';
 import styled, { useTheme } from 'styled-components';
 import { Card } from './ui/Card';
 
+
 // Utils
 const formatCurrency = (value) => {
   if (value === null || value === undefined || isNaN(Number(value))) return 'R$ 0,00';
@@ -145,7 +146,7 @@ const OverviewCard = ({
   saldo = 20050.15,
   receitas = 6538.55,
   despesas = 1619.43,
-  variacaoPercent = 12.5,
+  variacaoPercent = 0,
 }) => {
   const theme = useTheme();
   const negative = Number(variacaoPercent) < 0;

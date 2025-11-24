@@ -72,3 +72,38 @@ func (c *Conta) AtualizarCamposEditaveis(db *gorm.DB, novosDados map[string]inte
 	// Atualiza os campos no banco
 	return db.Model(c).Updates(dadosFiltrados).Error
 }
+
+// AtualizaSaldo recalcula o saldo da conta com base nas transações existentes
+func (c *Conta) AtualizaSaldo(db *gorm.DB) error {
+	var receitas float32
+	var despesas float32
+
+	// RECEITAS
+	if err := db.Table("transacaos").
+		Where("conta_id = ? AND (tipo = 'receita' OR tipo = 'receitas' OR tipo='entrada')", c.ID).
+		Select("COALESCE(SUM(valor), 0)").
+		Scan(&receitas).Error; err != nil {
+		return err
+	}
+
+	// DESPESAS
+	if err := db.Table("transacaos").
+		Where("conta_id = ? AND (tipo = 'despesa' OR tipo = 'despesas' OR tipo = 'saída')", c.ID).
+		Select("COALESCE(SUM(valor), 0)").
+		Scan(&despesas).Error; err != nil {
+		return err
+	}
+
+	// Novo saldo
+	novoSaldo := receitas - despesas
+
+	// Atualiza a conta no banco
+	if err := db.Model(c).Update("saldo", novoSaldo).Error; err != nil {
+		return err
+	}
+
+	// Atualiza o campo local da struct também
+	c.Saldo = novoSaldo
+
+	return nil
+}

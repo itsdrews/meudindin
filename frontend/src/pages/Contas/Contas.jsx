@@ -152,26 +152,36 @@ const Contas = ({ darkMode }) => {
   });
 
   // Carrega contas do backend
-  useEffect(() => {
-    async function load() {
+ // Carrega contas do backend
+useEffect(() => {
+  async function load() {
+    try {
+      // Busca as contas já com saldo atualizado do backend
       const data = await accountService.list();
+
+      // O backend já retorna:
+      // - id
+      // - numero
+      // - agencia
+      // - banco
+      // - tipo
+      // - saldo (o saldo real da conta)
       setAccounts(data);
-      // Calcula saldo de cada conta com base nas transações
-      const transactionService = (await import('../../services/transactionService')).default;
-      const contasComSaldo = [];
-      for (const acc of data) {
-        const trans = await transactionService.listByAccountId(acc.id);
-        const receitasConta = trans.filter(t => t.tipo === 'entrada').reduce((sum, t) => sum + Number(t.valor || 0), 0);
-        const despesasConta = trans.filter(t => t.tipo === 'saida').reduce((sum, t) => sum + Number(t.valor || 0), 0);
-        contasComSaldo.push({
-          ...acc,
-          saldoCalculado: receitasConta - despesasConta
-        });
-      }
+
+      // Se quiser manter accountsWithSaldo, usa diretamente o saldo do backend
+      const contasComSaldo = data.map(acc => ({
+        ...acc,
+        saldoCalculado: acc.saldo // saldo já calculado no backend
+      }));
+
       setAccountsWithSaldo(contasComSaldo);
+    } catch (err) {
+      console.error("Erro ao carregar contas:", err);
     }
-    load();
-  }, []);
+  }
+
+  load();
+}, []);
 
     // Carrega dados da conta ao abrir modal
   useEffect(() => {
@@ -195,7 +205,7 @@ const Contas = ({ darkMode }) => {
     try {
       await accountService.update(selectedAccountId, { apelido });
 
-      // Atualiza lista principal
+      // Atualiza lista principal   
       setAccounts(prev =>
         prev.map(acc =>
           acc.id === selectedAccountId ? { ...acc, apelido } : acc
@@ -290,7 +300,8 @@ const Contas = ({ darkMode }) => {
           </Button>
           <Button 
             onClick={() =>{setTimeout(()=>{
-              window.location.reload()
+              window.location.reload();
+              accountService.updateAll();
             },500)}}
           >
             ↻ Atualizar

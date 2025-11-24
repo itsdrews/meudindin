@@ -329,7 +329,7 @@ const Transactions = ({ darkMode }) => {
     const payload = editId
       ? { identificador: categoria }
       : {
-          tipo: form.tipo === 'receita' ? 'entrada' : 'saida',
+          tipo: form.tipo === 'receita' ? 'entrada' : 'saída',
           valor: Number(form.valor),
           categoria,
           descricao: form.descricao,
