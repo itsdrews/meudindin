@@ -34,6 +34,7 @@ func main() {
 	// Grupo protegido com JWT
 	auth := r.Group("/")
 	auth.Use(middlewares.JWTAuth())
+	auth.DELETE("/clientes/:id", controllers.DeletarCliente)
 
 	auth.PATCH("/contas/atualizar-saldos", controllers.AtualizarSaldoTodasContas)
 	auth.POST("/contas", controllers.CriarConta)
