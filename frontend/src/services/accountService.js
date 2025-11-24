@@ -1,6 +1,10 @@
 import api from './api';
 
 const accountService = {
+  delete: async (id) => {
+    const res = await api.delete(`/contas/${id}`);
+    return res.data;
+  },
 
   create: async (data) => {
     const res = await api.post('/contas', data);

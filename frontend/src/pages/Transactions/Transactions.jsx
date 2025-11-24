@@ -1,5 +1,16 @@
+// ...existing code...
+const initialFormState = {
+  valor: '',
+  tipo: 'receita',
+  categoria: 'Salário',
+  descricao: '',
+  contaId: '',
+  data: '',
+};
+
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import Button from '../../components/ui/Button';
 import transactionService from '../../services/transactionService';
 import accountService from '../../services/accountService';
 
@@ -23,44 +34,6 @@ const Title = styled.h2`
   transition: color 0.3s ease;
 `;
 
-const Subtitle = styled.p`
-  font-size: 0.95rem;
-  color: ${props => props.$darkMode ? '#a78bfa' : '#64748b'};
-  margin: 4px 0 0 0;
-  transition: color 0.3s ease;
-`;
-
-const Actions = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
-const Button = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 12px;
-  background: ${props => props.$primary 
-    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
-    : props.$darkMode ? '#3b2167' : 'white'};
-  color: ${props => props.$primary ? 'white' : props.$darkMode ? '#c4b5fd' : '#475569'};
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid ${props => props.$darkMode ? '#4c1d95' : '#e2e8f0'};
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px ${props => props.$primary 
-      ? 'rgba(102, 126, 234, 0.3)' 
-      : 'rgba(0, 0, 0, 0.1)'};
-  }
-`;
-
-// Modal
 const ModalOverlay = styled.div`
   position: fixed;
   inset: 0;
@@ -73,11 +46,13 @@ const ModalOverlay = styled.div`
 
 const ModalCard = styled.div`
   width: 100%;
-  max-width: 560px;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
   background: ${props => props.$darkMode ? '#2d1b4e' : 'white'};
   border: 1px solid ${props => props.$darkMode ? '#4c1d95' : '#e2e8f0'};
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.2);
 `;
 
@@ -302,144 +277,96 @@ const EmptyText = styled.p`
 `;
 
 const Transactions = ({ darkMode }) => {
+  const initialFormState = {
+    valor: '',
+    tipo: 'receita',
+    categoria: 'Salário',
+    descricao: '',
+    contaId: '',
+    data: '',
+  };
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(initialFormState);
+  const [editId, setEditId] = useState(null);
+  // Abrir modal para adicionar
+  const handleOpenModal = () => {
+    const primeiraContaId = accounts.length > 0 ? accounts[0].id : '';
+    setShowModal(true);
+    setEditId(null);
+    setForm({ ...initialFormState, contaId: primeiraContaId });
+  };
+
+  // Abrir modal para editar
+  const handleEditTransaction = (transaction) => {
+    setShowModal(true);
+    setEditId(transaction.id);
+    setForm({
+      valor: Math.abs(transaction.amount).toString(),
+      tipo: transaction.type,
+      categoria: transaction.category,
+      descricao: transaction.description || '',
+      contaId: accounts.find(acc => acc.banco === transaction.banco && acc.numero === transaction.numBanco)?.id || '',
+      data: transaction.date.split('/').reverse().join('-'),
+    });
+  };
+
+  // Submeter formulário
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    let categoria = form.categoria;
+    if (categoria === 'Nova Categoria' && form.descricao.trim()) {
+      const novaCategoria = form.descricao;
+      if (form.tipo === 'receita' && !receitaOptions.includes(novaCategoria)) {
+        setReceitaOptions(prev => [...prev, novaCategoria]);
+        categoria = novaCategoria;
+      } else if (form.tipo === 'despesa' && !despesaOptions.includes(novaCategoria)) {
+        setDespesaOptions(prev => [...prev, novaCategoria]);
+        categoria = novaCategoria;
+      } else {
+        categoria = novaCategoria;
+      }
+    }
+    const payload = editId
+      ? { identificador: categoria }
+      : {
+          tipo: form.tipo === 'receita' ? 'entrada' : 'saida',
+          valor: Number(form.valor),
+          categoria,
+          descricao: form.descricao,
+          titulo: categoria,
+          data: form.data ? new Date(form.data).toISOString() : new Date().toISOString(),
+        };
+    const contaObj = accounts.find(acc => String(acc.id) === String(form.contaId));
+    const idConta = contaObj ? contaObj.id : accounts[0]?.id;
+    if (!idConta) return;
+    try {
+      if (editId) {
+        await transactionService.update(editId, idConta, payload);
+      } else {
+        await transactionService.create(idConta, payload);
+      }
+      setShowModal(false);
+      setEditId(null);
+      setForm(initialFormState);
+      await loadAccountsAndTransactions();
+    } catch (err) {
+      alert('Erro ao salvar transação');
+      console.error(err);
+    }
+  };
   const [filterType, setFilterType] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ valor: '', tipo: 'receita', categoria: 'Salário', descricao: '' });
+  const [filterAccount, setFilterAccount] = useState('all');
   const defaultReceita = ['Salário','Freelance','Venda','Rendimento'];
   const defaultDespesa = ['Alimentação','Contas','Transporte','Lazer','Saúde'];
   const [receitaOptions, setReceitaOptions] = useState(defaultReceita);
   const [despesaOptions, setDespesaOptions] = useState(defaultDespesa);
-
-  // Dados mockados de transações
-  /*
-  const [transactions, setTransactions] = useState([
-    {
-      id: 'mock-1',
-      title: 'Salário',
-      category: 'Receita',
-      date: '14/11/2025',
-      amount: 4500.00,
-      type: 'receita',
-      account: 'Conta Corrente',
-      icon: '💰',
-      color: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-    },
-    {
-      id: 'mock-2',
-      title: 'Compra Supermercado',
-      category: 'Alimentação',
-      date: '13/11/2025',
-      amount: -345.50,
-      type: 'despesa',
-      account: 'Cartão de Crédito',
-      icon: '🛒',
-      color: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-    },
-    {
-      id: 'mock-3',
-      title: 'Venda de Picolé',
-      category: 'Receita',
-      date: '12/11/2025',
-      amount: 1200.00,
-      type: 'receita',
-      account: 'Dinheiro',
-      icon: '🍦',
-      color: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-    },
-    {
-      id: 'mock-4',
-      title: 'Conta de Luz',
-      category: 'Contas',
-      date: '11/11/2025',
-      amount: -150.00,
-      type: 'despesa',
-      account: 'Conta Corrente',
-      icon: '💡',
-      color: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-    },
-    {
-      id: 'mock-5',
-      title: 'Uber',
-      category: 'Transporte',
-      date: '10/11/2025',
-      amount: -25.50,
-      type: 'despesa',
-      account: 'Cartão de Débito',
-      icon: '🚗',
-      color: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-    },
-    {
-      id: 'mock-6',
-      title: 'Freelance Design',
-      category: 'Receita',
-      date: '09/11/2025',
-      amount: 838.55,
-      type: 'receita',
-      account: 'Conta Corrente',
-      icon: '💼',
-      color: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-    },
-    {
-      id: 'mock-7',
-      title: 'Cinema',
-      category: 'Lazer',
-      date: '08/11/2025',
-      amount: -45.00,
-      type: 'despesa',
-      account: 'Dinheiro',
-      icon: '🎬',
-      color: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)'
-    },
-    {
-      id: 'mock-8',
-      title: 'Academia',
-      category: 'Saúde',
-      date: '05/11/2025',
-      amount: -120.00,
-      type: 'despesa',
-      account: 'Cartão de Crédito',
-      icon: '💪',
-      color: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-    }
-  ]);
-*/
   const [transactions,setTransactions] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const categoriaOptions = form.tipo === 'receita' ? receitaOptions : despesaOptions;
 
-  // Carregar transações do backend ao montar o componente
-  /*
-  useEffect(() => {
-    const loadTransactions = async () => {
-      try {
-        const backendTransactions = await transactionService.list();
-        // Mapear transações do backend para o formato da UI
-        const mappedTransactions = backendTransactions.map(t => ({
-          id: t.id,
-          title: t.origem || t.descricao || 'Sem título',
-          category: t.origem || 'Outros',
-          date: new Date(t.data).toLocaleDateString('pt-BR'),
-          amount: t.tipo === 'despesa' ? -Math.abs(t.valor) : Math.abs(t.valor),
-          type: t.tipo,
-          account: 'Conta Corrente',
-          icon: t.tipo === 'receita' ? '💰' : '🧾',
-          color: t.tipo === 'receita' 
-            ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-            : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-        }));
-        // Adicionar transações do backend no início da lista
-        setTransactions(prev => [...mappedTransactions, ...prev]);
-      } catch (error) {
-        console.error('Erro ao carregar transações:', error);
-      }
-    };
-    loadTransactions();
-  }, []);
-  */
-
-  useEffect(() => {
+  // Função para carregar contas e transações (reutilizável)
   const loadAccountsAndTransactions = async () => {
     try {
       // 1. Carrega todas as contas
@@ -457,16 +384,17 @@ const Transactions = ({ darkMode }) => {
             id: t.id,
             title: t.titulo || 'Sem título',
             date: new Date(t.data).toLocaleDateString('pt-BR'),
-            category:t.categoria,
-            description:t.descricao,
-            amount: t.tipo === 'despesa' ? -Math.abs(t.valor) : Math.abs(t.valor),
-            type: t.tipo,
-            third:t.origem || t.destino,
+            category: t.categoria,
+            description: t.descricao,
+            amount: t.tipo === 'saida' ? -Math.abs(t.valor) : Math.abs(t.valor),
+            type: t.tipo === 'entrada' ? 'receita' : 'despesa',
+            third: t.origem || t.destino,
             banco: acc.banco,
-            numBanco:acc.numero,
-            icon: t.tipo === 'receita' ? '💰' : '🧾',
+            numBanco: acc.numero,
+            accountId: acc.id,
+            icon: t.tipo === 'entrada' ? '💰' : '🧾',
             color:
-              t.tipo === 'receita'
+              t.tipo === 'entrada'
                 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
                 : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
           }));
@@ -490,142 +418,70 @@ const Transactions = ({ darkMode }) => {
     }
   };
 
-  loadAccountsAndTransactions();
-}, []);
+  // Carregar ao montar o componente
+  useEffect(() => {
+    loadAccountsAndTransactions();
+  }, []);
 
-  const handleOpenModal = () => {
-    setShowModal(true);
-    setForm({ valor: '', tipo: 'receita', categoria: 'Salário', descricao: '' });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    let categoria = form.categoria;
-    // Se "Nova Categoria" com descricao definida, adiciona à lista separada por tipo
-    if (categoria === 'Nova Categoria' && form.descricao.trim()) {
-      const novaCategoria = form.descricao;
-      if (form.tipo === 'receita' && !receitaOptions.includes(novaCategoria)) {
-        setReceitaOptions(prev => [...prev, novaCategoria]);
-        categoria = novaCategoria;
-      } else if (form.tipo === 'despesa' && !despesaOptions.includes(novaCategoria)) {
-        setDespesaOptions(prev => [...prev, novaCategoria]);
-        categoria = novaCategoria;
-      } else {
-        // Se já existe, usa a categoria
-        categoria = novaCategoria;
-      }
-    }
-
-    // Persistência no backend
-    try {
-      const payload = {
-        tipo: form.tipo,
-        valor: Number(form.valor),
-        categoria,
-        descricao: form.descricao,
-        data: new Date().toISOString(), // Adiciona data atual em formato ISO
-      };
-      const accountId = accounts[0].id;
-      const created = await transactionService.create(accountId, payload);
-
-      // Atualiza lista local rapidamente
-      const newItem = {
-        id: created.id || Date.now(),
-        title: categoria,
-        category: categoria,
-        description: form.descricao,
-        date: new Date().toLocaleDateString('pt-BR'),
-        amount: form.tipo === 'despesa' ? -Math.abs(Number(form.valor)) : Math.abs(Number(form.valor)),
-        type: form.tipo,
-        account: 'Conta Corrente',
-        icon: form.tipo === 'receita' ? '💰' : '🧾',
-        color: form.tipo === 'receita' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-        banco: accounts[0].banco,
-        numBanco: accounts[0].numero,
-      };
-      setTransactions(prev => [newItem, ...prev]);
-      setShowModal(false);
-    } catch (err) {
-      console.error('Erro ao criar transação', err);
-      // Mesmo em caso de erro, poderíamos manter local opcionalmente
-    }
-  };
 
   // Filtrar transações
   const filteredTransactions = transactions.filter(transaction => {
     const matchesType = filterType === 'all' || transaction.type === filterType;
     const matchesCategory = filterCategory === 'all' || transaction.category === filterCategory;
     const matchesSearch = transaction.title.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesType && matchesCategory && matchesSearch;
+    const matchesAccount = filterAccount === 'all' || String(transaction.accountId) === String(filterAccount);
+    return matchesType && matchesCategory && matchesSearch && matchesAccount;
   });
 
   return (
     <TransactionsContainer>
-      <Header>
-        <div>
-          <Title $darkMode={darkMode}>Transações</Title>
-          <Subtitle $darkMode={darkMode}>Gerencie todas as suas movimentações financeiras</Subtitle>
+      {/* Barra de filtros com botão adicionar */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Filtro de tipo */}
+          <select
+            value={filterType}
+            onChange={e => setFilterType(e.target.value)}
+            style={{ padding: '8px', borderRadius: 8 }}
+          >
+            <option value="all">Todos</option>
+            <option value="receita">Receita</option>
+            <option value="despesa">Despesa</option>
+          </select>
+          {/* Filtro de categoria */}
+          <select
+            value={filterCategory}
+            onChange={e => setFilterCategory(e.target.value)}
+            style={{ padding: '8px', borderRadius: 8 }}
+          >
+            <option value="all">Todas as categorias</option>
+            {receitaOptions.concat(despesaOptions).map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          {/* Filtro de conta */}
+          <select
+            value={filterAccount}
+            onChange={e => setFilterAccount(e.target.value)}
+            style={{ padding: '8px', borderRadius: 8 }}
+          >
+            <option value="all">Todas as contas</option>
+            {accounts.map(acc => (
+              <option key={acc.id} value={acc.id}>
+                {acc.apelido} — {acc.banco} ({acc.numero})
+              </option>
+            ))}
+          </select>
         </div>
-        <Actions>
-          <Button $darkMode={darkMode}>
-            📥 Importar
-          </Button>
-          <Button $primary $darkMode={darkMode} onClick={handleOpenModal}>
-            ➕ Nova Transação
-          </Button>
-        </Actions>
-      </Header>
-
-      <FilterSection $darkMode={darkMode}>
-        <FilterRow>
-          <FilterGroup>
-            <FilterLabel $darkMode={darkMode}>Tipo</FilterLabel>
-            <Select 
-              $darkMode={darkMode}
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-            >
-              <option value="all">Todos</option>
-              <option value="receita">Receitas</option>
-              <option value="despesa">Despesas</option>
-            </Select>
-          </FilterGroup>
-
-          <FilterGroup>
-            <FilterLabel $darkMode={darkMode}>Categoria</FilterLabel>
-            <Select 
-              $darkMode={darkMode}
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-            >
-              <option value="all">Todas</option>
-              <option value="Receita">Receita</option>
-              <option value="Alimentação">Alimentação</option>
-              <option value="Contas">Contas</option>
-              <option value="Transporte">Transporte</option>
-              <option value="Lazer">Lazer</option>
-              <option value="Saúde">Saúde</option>
-            </Select>
-          </FilterGroup>
-
-          <FilterGroup>
-            <FilterLabel $darkMode={darkMode}>Buscar</FilterLabel>
-            <Input 
-              $darkMode={darkMode}
-              type="text"
-              placeholder="Procurar transação..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </FilterGroup>
-        </FilterRow>
-      </FilterSection>
+        <Button $primary $darkMode={darkMode} onClick={handleOpenModal}>
+          ➕ Adicionar Transação
+        </Button>
+      </div>
 
       <TransactionsList $darkMode={darkMode}>
         {filteredTransactions.length > 0 ? (
           filteredTransactions.map(transaction => (
-            <TransactionItem key={transaction.id} $darkMode={darkMode}>
-              {console.log(transaction)}
+            <TransactionItem key={transaction.id} $darkMode={darkMode} onClick={() => handleEditTransaction(transaction)} style={{ cursor: 'pointer' }}>
               <TransactionLeft>
                 <TransactionIcon $color={transaction.color}>
                   {transaction.icon}
@@ -659,7 +515,6 @@ const Transactions = ({ darkMode }) => {
                 </TransactionAmount>
                 <TransactionAccount $darkMode={darkMode}>
                   {transaction.banco} <span style={{ color: darkMode ? '#4c1d95' : '#cbd5e1' }}>•</span> {transaction.numBanco}
-               
                 </TransactionAccount>
               </TransactionRight>
             </TransactionItem>
@@ -672,81 +527,133 @@ const Transactions = ({ darkMode }) => {
         )}
       </TransactionsList>
 
+      {/* Modal de adicionar/editar transação */}
       {showModal && (
         <ModalOverlay>
           <ModalCard $darkMode={darkMode}>
-            <ModalTitle $darkMode={darkMode}>Nova Transação</ModalTitle>
+            <ModalTitle $darkMode={darkMode}>{editId ? 'Editar Categoria da Transação' : 'Adicionar Transação'}</ModalTitle>
             <form onSubmit={handleSubmit}>
-              <FormRow>
-                <FormCol>
-                  <FilterLabel $darkMode={darkMode}>Tipo</FilterLabel>
-                  <RadioGroup>
-                    <Radio $darkMode={darkMode}>
-                      <input
-                        type="radio"
-                        name="tipo"
-                        value="receita"
-                        checked={form.tipo === 'receita'}
-                        onChange={(e) => setForm({ ...form, tipo: e.target.value, categoria: 'Salário' })}
+              {editId ? (
+                <FormRow>
+                  <FormCol>
+                    <FilterLabel $darkMode={darkMode}>Categoria</FilterLabel>
+                    <Select
+                      $darkMode={darkMode}
+                      value={form.categoria}
+                      onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+                      required
+                    >
+                      {categoriaOptions.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                      <option value="Nova Categoria">Nova Categoria</option>
+                    </Select>
+                  </FormCol>
+                </FormRow>
+              ) : (
+                <>
+                  <FormRow>
+                    <FormCol>
+                      <FilterLabel $darkMode={darkMode}>Tipo</FilterLabel>
+                      <RadioGroup>
+                        <Radio $darkMode={darkMode}>
+                          <input
+                            type="radio"
+                            name="tipo"
+                            value="receita"
+                            checked={form.tipo === 'receita'}
+                            onChange={(e) => setForm({ ...form, tipo: e.target.value, categoria: 'Salário' })}
+                          />
+                          Receita
+                        </Radio>
+                        <Radio $darkMode={darkMode}>
+                          <input
+                            type="radio"
+                            name="tipo"
+                            value="despesa"
+                            checked={form.tipo === 'despesa'}
+                            onChange={(e) => setForm({ ...form, tipo: e.target.value, categoria: 'Alimentação' })}
+                          />
+                          Despesa
+                        </Radio>
+                      </RadioGroup>
+                    </FormCol>
+                    <FormCol>
+                      <FilterLabel $darkMode={darkMode}>Valor</FilterLabel>
+                      <Input
+                        $darkMode={darkMode}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0,00"
+                        value={form.valor}
+                        onChange={(e) => setForm({ ...form, valor: e.target.value })}
+                        required
                       />
-                      Receita
-                    </Radio>
-                    <Radio $darkMode={darkMode}>
-                      <input
-                        type="radio"
-                        name="tipo"
-                        value="despesa"
-                        checked={form.tipo === 'despesa'}
-                        onChange={(e) => setForm({ ...form, tipo: e.target.value, categoria: 'Alimentação' })}
+                    </FormCol>
+                  </FormRow>
+
+                  <FormRow>
+                    <FormCol>
+                      <FilterLabel $darkMode={darkMode}>Conta</FilterLabel>
+                      <Select
+                        $darkMode={darkMode}
+                        value={form.contaId}
+                        onChange={(e) => setForm({ ...form, contaId: e.target.value })}
+                        required
+                        readOnly={!!editId}
+                        disabled={!!editId}
+                      >
+                        {accounts.length === 0 && <option value="">Carregando contas...</option>}
+                        {accounts.map(acc => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.apelido || acc.banco} - {acc.numero} (R$ {Number(acc.saldo || 0).toFixed(2)})
+                          </option>
+                        ))}
+                      </Select>
+                    </FormCol>
+                    <FormCol>
+                      <FilterLabel $darkMode={darkMode}>Categoria</FilterLabel>
+                      <Select
+                        $darkMode={darkMode}
+                        value={form.categoria}
+                        onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+                      >
+                        {categoriaOptions.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                        <option value="Nova Categoria">Nova Categoria</option>
+                      </Select>
+                    </FormCol>
+                  </FormRow>
+
+                  <FormRow>
+                    <FormCol>
+                      <FilterLabel $darkMode={darkMode}>Descrição</FilterLabel>
+                      <Input
+                        $darkMode={darkMode}
+                        type="text"
+                        placeholder="Ex: detalhamento da transação"
+                        value={form.descricao}
+                        onChange={(e) => setForm({ ...form, descricao: e.target.value })}
                       />
-                      Despesa
-                    </Radio>
-                  </RadioGroup>
-                </FormCol>
-                <FormCol>
-                  <FilterLabel $darkMode={darkMode}>Valor</FilterLabel>
-                  <Input
-                    $darkMode={darkMode}
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
-                    value={form.valor}
-                    onChange={(e) => setForm({ ...form, valor: e.target.value })}
-                    required
-                  />
-                </FormCol>
-              </FormRow>
-
-              <FormRow>
-                <FormCol>
-                  <FilterLabel $darkMode={darkMode}>Categoria</FilterLabel>
-                  <Select
-                    $darkMode={darkMode}
-                    value={form.categoria}
-                    onChange={(e) => setForm({ ...form, categoria: e.target.value })}
-                  >
-                    {categoriaOptions.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                    <option value="Nova Categoria">Nova Categoria</option>
-                  </Select>
-                </FormCol>
-                <FormCol>
-                  <FilterLabel $darkMode={darkMode}>Descrição (opcional ou "Nova Categoria")</FilterLabel>
-                  <Input
-                    $darkMode={darkMode}
-                    type="text"
-                    placeholder={form.categoria === 'Nova Categoria' ? 'Digite a nova categoria' : 'Ex: detalhamento da transação'}
-                    value={form.descricao}
-                    onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-                  />
-                </FormCol>
-              </FormRow>
-
+                    </FormCol>
+                    <FormCol>
+                      <FilterLabel $darkMode={darkMode}>Data</FilterLabel>
+                      <Input
+                        $darkMode={darkMode}
+                        type="date"
+                        value={form.data}
+                        onChange={(e) => setForm({ ...form, data: e.target.value })}
+                        required
+                      />
+                    </FormCol>
+                  </FormRow>
+                </>
+              )}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
-                <Button type="button" onClick={() => setShowModal(false)} $darkMode={darkMode}>Cancelar</Button>
-                <Button type="submit" $primary $darkMode={darkMode}>Salvar</Button>
+                <Button type="button" onClick={() => { setShowModal(false); setEditId(null); setForm(initialFormState); }} $darkMode={darkMode}>Cancelar</Button>
+                <Button type="submit" $primary $darkMode={darkMode}>{editId ? 'Salvar Edição' : 'Adicionar'}</Button>
               </div>
             </form>
           </ModalCard>

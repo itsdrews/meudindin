@@ -265,23 +265,61 @@ const Home = ({ darkMode }) => {
   const [showDespesas, setShowDespesas] = useState(false);
   const [accounts, setAccounts] = useState([]);
   const [totalBalance, setTotalBalance] = useState(0);
+  const [distributionData, setDistributionData] = useState([]);
+  const [receitas, setReceitas] = useState(0);
+  const [despesas, setDespesas] = useState(0);
 
   useEffect(() => {
-  async function fetchAccounts() {
-    try {
-      const res = await accountService.list();
-      setAccounts(res);
-
-      // soma todos os saldos
-      const total = res.reduce((sum, acc) => sum + Number(acc.saldo || 0), 0);
-      setTotalBalance(total);
-      
-    } catch (err) {
-      console.error("Erro ao carregar contas:", err);
+    async function fetchData() {
+      try {
+        const accs = await accountService.list();
+        const transactionService = (await import('../../services/transactionService')).default;
+        let receitasTotal = 0;
+        let despesasTotal = 0;
+        let todasTransacoes = [];
+        const contasComSaldo = [];
+        for (const acc of accs) {
+          const trans = await transactionService.listByAccountId(acc.id);
+          todasTransacoes = todasTransacoes.concat(trans);
+          const receitasConta = trans.filter(t => t.tipo === 'entrada').reduce((sum, t) => sum + Number(t.valor || 0), 0);
+          const despesasConta = trans.filter(t => t.tipo === 'saida').reduce((sum, t) => sum + Number(t.valor || 0), 0);
+          contasComSaldo.push({
+            ...acc,
+            saldoCalculado: receitasConta - despesasConta
+          });
+        }
+        setAccounts(contasComSaldo);
+        const total = contasComSaldo.reduce((sum, acc) => sum + acc.saldoCalculado, 0);
+        setTotalBalance(total);
+        const distData = contasComSaldo.map(acc => {
+          const percent = total > 0 ? ((acc.saldoCalculado / total) * 100).toFixed(1) : 0;
+          const tipoLower = (acc.tipo || 'default').toLowerCase();
+          const accountTypeConfig = {
+            'corrente': { icon: '🏦', color: '#3b82f6' },
+            'poupanca': { icon: '🐷', color: '#f59e0b' },
+            'investimento': { icon: '📈', color: '#8b5cf6' },
+            'especie': { icon: '💵', color: '#10b981' },
+            'default': { icon: '💳', color: '#6366f1' }
+          };
+          const config = accountTypeConfig[tipoLower] || accountTypeConfig['default'];
+          return {
+            id: acc.id,
+            label: acc.apelido || `${acc.banco} - ${acc.numero}`,
+            percent: Number(percent),
+            amount: acc.saldoCalculado,
+            icon: config.icon,
+            color: config.color
+          };
+        }).filter(item => item.amount > 0);
+        setDistributionData(distData);
+        // Calcula receitas e despesas agregadas de todas as transações do usuário
+        setReceitas(todasTransacoes.filter(t => t.tipo === 'entrada').reduce((sum, t) => sum + Number(t.valor || 0), 0));
+        setDespesas(todasTransacoes.filter(t => t.tipo === 'saida').reduce((sum, t) => sum + Number(t.valor || 0), 0));
+      } catch (err) {
+        console.error("Erro ao carregar dados:", err);
+      }
     }
-  }
-
-    fetchAccounts();
+    fetchData();
   }, []);
   
   const toggleDistribution = () => {
@@ -296,12 +334,15 @@ const Home = ({ darkMode }) => {
     setShowDespesas(!showDespesas);
   };
   
-  const distributionData = [
-    { id: 1, label: 'Dinheiro em espécie', percent: 10, amount: 2005.02, icon: '💵', color: '#10b981' },
-    { id: 2, label: 'Conta Corrente Bradesco', percent: 20, amount: 4010.03, icon: '🏦', color: '#3b82f6' },
-    { id: 3, label: 'Poupança Caixa', percent: 30, amount: 6015.05, icon: '🐷', color: '#f59e0b' },
-    { id: 4, label: 'Investimentos', percent: 40, amount: 8020.05, icon: '📈', color: '#8b5cf6' }
-  ];
+  // Mapeia os tipos de conta para ícones e cores
+  const accountTypeConfig = {
+    'corrente': { icon: '🏦', color: '#3b82f6' },
+    'poupanca': { icon: '🐷', color: '#f59e0b' },
+    'investimento': { icon: '📈', color: '#8b5cf6' },
+    'especie': { icon: '💵', color: '#10b981' },
+    'default': { icon: '💳', color: '#6366f1' }
+  };
+
 
   return (
     <HomeContainer>
@@ -321,20 +362,26 @@ const Home = ({ darkMode }) => {
                     {showDistribution && (
                       <DistributionDropdown $darkMode={darkMode}>
                         <DistributionTitle $darkMode={darkMode}>Distribuição do Saldo</DistributionTitle>
-                        {distributionData.map(item => (
-                          <DistributionItem key={item.id} $darkMode={darkMode}>
-                            <DistributionInfo>
-                              <DistributionIcon $color={item.color}>{item.icon}</DistributionIcon>
-                              <DistributionLabel $darkMode={darkMode}>{item.label}</DistributionLabel>
-                            </DistributionInfo>
-                            <DistributionValues>
-                              <DistributionPercent $darkMode={darkMode}>{item.percent}%</DistributionPercent>
-                              <DistributionAmount $darkMode={darkMode}>
-                                R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                              </DistributionAmount>
-                            </DistributionValues>
-                          </DistributionItem>
-                        ))}
+                        {distributionData.length > 0 ? (
+                          distributionData.map(item => (
+                            <DistributionItem key={item.id} $darkMode={darkMode}>
+                              <DistributionInfo>
+                                <DistributionIcon $color={item.color}>{item.icon}</DistributionIcon>
+                                <DistributionLabel $darkMode={darkMode}>{item.label}</DistributionLabel>
+                              </DistributionInfo>
+                              <DistributionValues>
+                                <DistributionPercent $darkMode={darkMode}>{item.percent}%</DistributionPercent>
+                                <DistributionAmount $darkMode={darkMode}>
+                                  R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </DistributionAmount>
+                              </DistributionValues>
+                            </DistributionItem>
+                          ))
+                        ) : (
+                          <DistributionLabel $darkMode={darkMode} style={{ textAlign: 'center', padding: '12px' }}>
+                            Nenhuma conta com saldo disponível
+                          </DistributionLabel>
+                        )}
                       </DistributionDropdown>
                     )}
                   </BalanceInfo>
@@ -353,7 +400,7 @@ const Home = ({ darkMode }) => {
                   <StatDot $color="#10b981" />
                   <StatInfo>
                     <StatLabel $darkMode={darkMode}>Receitas</StatLabel>
-                    <StatValue color="#10b981">R$ 6.538,55</StatValue>
+                    <StatValue color="#10b981">R$ {receitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</StatValue>
                   </StatInfo>
                 </StatItem>
                 <StatItem 
@@ -365,7 +412,7 @@ const Home = ({ darkMode }) => {
                   <StatDot $color="#ef4444" />
                   <StatInfo>
                     <StatLabel $darkMode={darkMode}>Despesas</StatLabel>
-                    <StatValue color="#ef4444">R$ 1.619,43</StatValue>
+                    <StatValue color="#ef4444">R$ {despesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</StatValue>
                   </StatInfo>
                 </StatItem>
               </StatsRow>

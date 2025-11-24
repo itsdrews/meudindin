@@ -99,6 +99,7 @@ const Select = styled.select`
   width: 100%;
   padding: 12px;
   margin-bottom: 12px;
+  margin-bottom: 12px;
   border-radius: 10px;
   background: ${p => p.$darkMode ? '#3b2167' : 'white'};
   color: ${p => p.$darkMode ? 'white' : '#0f172a'};
@@ -129,7 +130,9 @@ const AccountCard = styled.div`
 // ========== COMPONENTE ==========
 const Contas = ({ darkMode }) => {
   const [accounts, setAccounts] = useState([]);
+  const [accountsWithSaldo, setAccountsWithSaldo] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   
   const [selectedAccountId, setSelectedAccountId] = useState(null);
   const [selectedAccount, setSelectedAccount] = useState(null);
@@ -141,11 +144,11 @@ const Contas = ({ darkMode }) => {
 
   const [form, setForm] = useState({
     apelido: "",
-    tipo: "Corrente",
+    tipo: "corrente",
     banco: "",
     agencia: "",
     numero: "",
-    saldo: ""
+    codBanco: ""
   });
 
   // Carrega contas do backend
@@ -153,6 +156,19 @@ const Contas = ({ darkMode }) => {
     async function load() {
       const data = await accountService.list();
       setAccounts(data);
+      // Calcula saldo de cada conta com base nas transações
+      const transactionService = (await import('../../services/transactionService')).default;
+      const contasComSaldo = [];
+      for (const acc of data) {
+        const trans = await transactionService.listByAccountId(acc.id);
+        const receitasConta = trans.filter(t => t.tipo === 'entrada').reduce((sum, t) => sum + Number(t.valor || 0), 0);
+        const despesasConta = trans.filter(t => t.tipo === 'saida').reduce((sum, t) => sum + Number(t.valor || 0), 0);
+        contasComSaldo.push({
+          ...acc,
+          saldoCalculado: receitasConta - despesasConta
+        });
+      }
+      setAccountsWithSaldo(contasComSaldo);
     }
     load();
   }, []);
@@ -205,6 +221,8 @@ const Contas = ({ darkMode }) => {
   const handleCreate = async (e) => {
     e.preventDefault();
 
+    // Gera saldo aleatório entre 1000 e 10000
+    const saldoRandomizado = Math.floor(Math.random() * 9000) + 1000;
     
     const payload = {
       numero: form.numero,
@@ -212,8 +230,8 @@ const Contas = ({ darkMode }) => {
       codBanco: form.codBanco ? Number(form.codBanco) : 0,
       tipo: form.tipo,
       banco: form.banco,
-      saldo: form.saldo ? Number(form.saldo) : 0,
-      apelido: form.apelido,
+      saldo: saldoRandomizado,
+      apelido: form.apelido || `${form.banco} - ${form.tipo}`,
     };
 
     console.log("Payload enviado:", payload);
@@ -238,7 +256,16 @@ const Contas = ({ darkMode }) => {
         }
       ]);
 
-      setShowModal(false);
+      // Reseta o formulário e fecha o modal
+      setForm({
+        apelido: "",
+        tipo: "corrente",
+        banco: "",
+        agencia: "",
+        numero: "",
+        codBanco: ""
+      });
+      setShowCreateModal(false);
     } catch (err) {
       console.error("Erro ao criar conta:", err.response?.data || err.message);
       alert(err.response?.data?.erro || "Erro ao criar conta");
@@ -256,7 +283,13 @@ const Contas = ({ darkMode }) => {
 
         <Actions>
           <Button 
-            $primary onClick={() =>{setTimeout(()=>{
+            onClick={() => setShowCreateModal(true)}
+            $primary
+          >
+            + Nova Conta
+          </Button>
+          <Button 
+            onClick={() =>{setTimeout(()=>{
               window.location.reload()
             },500)}}
           >
@@ -267,11 +300,11 @@ const Contas = ({ darkMode }) => {
 
       {/* LISTA */}
       <AccountList>
-        {accounts.length >0? accounts.map(acc => (
+        {accountsWithSaldo.length >0? accountsWithSaldo.map(acc => (
           <AccountCard key={acc.id} $darkMode={darkMode} onClick={() =>openViewModal(acc.id)}>
             <h3 style={{ margin: 0 }}>{acc.apelido}</h3>
             <p>{acc.tipo} • {acc.banco}</p>
-            <strong>R$ {acc.saldo?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+            <strong>R$ {acc.saldoCalculado?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
           </AccountCard>
         )):(
   <p style={{ opacity: 0.7, fontStyle: "italic", marginTop: "1rem" }}>
@@ -280,7 +313,73 @@ const Contas = ({ darkMode }) => {
 )}
       </AccountList>
 
-     {/* MODAL */}
+     {/* MODAL DE CRIAÇÃO */}
+      {showCreateModal && (
+        <ModalOverlay>
+          <ModalCard $darkMode={darkMode}>
+            <ModalTitle $darkMode={darkMode}>Nova Conta</ModalTitle>
+            <form onSubmit={handleCreate}>
+              <Input 
+                $darkMode={darkMode}
+                placeholder="Nome da conta (apelido)"
+                value={form.apelido}
+                onChange={e => setForm({ ...form, apelido: e.target.value })}
+              />
+
+              <Input 
+                $darkMode={darkMode}
+                placeholder="Nome do Banco"
+                value={form.banco}
+                onChange={e => setForm({ ...form, banco: e.target.value })}
+                required
+              />
+
+              <Input 
+                $darkMode={darkMode}
+                placeholder="Código do Banco (ex: 001)"
+                type="number"
+                value={form.codBanco}
+                onChange={e => setForm({ ...form, codBanco: e.target.value })}
+                required
+              />
+
+              <Input 
+                $darkMode={darkMode}
+                placeholder="Agência"
+                type="number"
+                value={form.agencia}
+                onChange={e => setForm({ ...form, agencia: e.target.value })}
+                required
+              />
+
+              <Input 
+                $darkMode={darkMode}
+                placeholder="Número da Conta"
+                value={form.numero}
+                onChange={e => setForm({ ...form, numero: e.target.value })}
+                required
+              />
+
+              <Select
+                $darkMode={darkMode}
+                value={form.tipo}
+                onChange={e => setForm({ ...form, tipo: e.target.value })}
+                required
+              >
+                <option value="corrente">Conta Corrente</option>
+                <option value="poupanca">Conta Poupança</option>
+              </Select>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 16 }}>
+                <Button type="button" onClick={() => setShowCreateModal(false)} $darkMode={darkMode}>Cancelar</Button>
+                <Button type="submit" $primary>Criar Conta</Button>
+              </div>
+            </form>
+          </ModalCard>
+        </ModalOverlay>
+      )}
+
+     {/* MODAL DE VISUALIZAÇÃO */}
       {showModal && selectedAccount && (
         <ModalOverlay>
           <ModalCard $darkMode={darkMode}>
@@ -328,22 +427,42 @@ const Contas = ({ darkMode }) => {
             />
 
             {/* BOTÕES */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 16 }}>
+              {/* Botão deletar no canto inferior esquerdo */}
+              <Button 
+                style={{ background: '#ef4444', color: '#fff' }} 
+                onClick={async () => {
+                  if (window.confirm('Tem certeza que deseja deletar esta conta?')) {
+                    try {
+                      await accountService.delete(selectedAccount.id);
+                      setAccounts(prev => prev.filter(acc => acc.id !== selectedAccount.id));
+                      setShowModal(false);
+                    } catch (err) {
+                      alert('Erro ao deletar conta');
+                      console.error(err);
+                    }
+                  }
+                }}
+                $darkMode={darkMode}
+              >
+                🗑️ Deletar Conta
+              </Button>
 
-              {!isEditing ? (
-                <>
-                  <Button onClick={() => setShowModal(false)} $darkMode={darkMode}>Fechar</Button>
-                  <Button $primary onClick={() => setIsEditing(true)}>Editar Apelido</Button>
-                </>
-              ) : (
-                <>
-                  <Button onClick={() => { setIsEditing(false); setApelido(selectedAccount.apelido); }} $darkMode={darkMode}>
-                    Cancelar
-                  </Button>
-                  <Button $primary onClick={handleSaveApelido}>Salvar</Button>
-                </>
-              )}
-
+              <div style={{ display: "flex", gap: 12 }}>
+                {!isEditing ? (
+                  <>
+                    <Button onClick={() => setShowModal(false)} $darkMode={darkMode}>Fechar</Button>
+                    <Button $primary onClick={() => setIsEditing(true)}>Editar Apelido</Button>
+                  </>
+                ) : (
+                  <>
+                    <Button onClick={() => { setIsEditing(false); setApelido(selectedAccount.apelido); }} $darkMode={darkMode}>
+                      Cancelar
+                    </Button>
+                    <Button $primary onClick={handleSaveApelido}>Salvar</Button>
+                  </>
+                )}
+              </div>
             </div>
           </ModalCard>
         </ModalOverlay>

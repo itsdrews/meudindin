@@ -334,8 +334,11 @@ const Goals = ({ darkMode }) => {
   // ===== Editar meta =====
   const handleEdit = (goal) => {
     if (!goal.id) return console.error("Meta sem ID", goal);
-
-    setEditingGoal({ ...goal });
+    // Garante que o campo de data seja preenchido corretamente
+    setEditingGoal({
+      ...goal,
+      prazo: goal.prazo || goal.data_limite || goal.dataLimite || ""
+    });
     setShowModal(true);
   };
 
@@ -454,15 +457,28 @@ const Goals = ({ darkMode }) => {
                   onChange={e => setEditingGoal({...editingGoal, total: Number(e.target.value)})}
                 />
 
-                <Input
-                  $darkMode={darkMode}
-                  type="date"
-                  placeholder="Prazo"
-                  required
-                  value={editingGoal?.prazo || ""}
-                  onChange={e => setEditingGoal({...editingGoal, prazo: e.target.value})}
-                  
-                />
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: 10,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      pointerEvents: 'none',
+                      fontSize: '1.2rem',
+                      color: darkMode ? '#c4b5fd' : '#64748b',
+                    }}
+                  >📅</span>
+                  <Input
+                    $darkMode={darkMode}
+                    type="date"
+                    placeholder="Prazo"
+                    required
+                    value={editingGoal?.prazo || ""}
+                    onChange={e => setEditingGoal({...editingGoal, prazo: e.target.value})}
+                    style={{ paddingLeft: 32 }}
+                  />
+                </div>
               </ModalRow>
               <Select
                   $darkMode={darkMode}
