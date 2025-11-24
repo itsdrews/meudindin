@@ -151,6 +151,30 @@ const MainContent = styled.div`
   overflow-y: auto;
 `;
 
+const LogoButton = styled.button`
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;   /* <-- garante ícone à esquerda */
+  gap: 12px;
+
+  width: 100%;
+  text-align: left;
+
+  &:hover ${LogoTitle}, &:hover ${LogoSubtitle} {
+    opacity: 0.9;
+  }
+
+  &:hover ${LogoIcon} {
+    transform: scale(1.05);
+  }
+`;
+
+
 const MainLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -172,11 +196,14 @@ const MainLayout = ({ children }) => {
     <LayoutContainer $darkMode={darkMode}>
       <Sidebar $darkMode={darkMode}>
         <Logo>
-          <LogoIcon>💰</LogoIcon>
-          <LogoText>
-            <LogoTitle $darkMode={darkMode}>MeuDinDin</LogoTitle>
-            <LogoSubtitle $darkMode={darkMode}>Finanças Inteligentes</LogoSubtitle>
-          </LogoText>
+          <LogoButton onClick={() => navigate('/visaogeral')}>
+            <LogoIcon>💰</LogoIcon>
+
+            <LogoText>
+              <LogoTitle $darkMode={darkMode}>MeuDinDin</LogoTitle>
+              <LogoSubtitle $darkMode={darkMode}>Finanças Inteligentes</LogoSubtitle>
+            </LogoText>
+          </LogoButton>
         </Logo>
 
         <NavItem 
@@ -226,6 +253,26 @@ const MainLayout = ({ children }) => {
       <Content>
         <TopBar $darkMode={darkMode}>
           <TopBarActions>
+            <IconButton 
+              $darkMode={darkMode} 
+              title="Meu Perfil"
+              onClick={() => navigate("/perfil")}
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: "50%",
+                fontSize: "1rem",
+                fontWeight: "700",
+                background: darkMode 
+                  ? "linear-gradient(135deg, #4c1d95, #6d28d9)" 
+                  : "linear-gradient(135deg, #667eea, #764ba2)",
+                color: "white"
+              }}
+            >
+              {localStorage.getItem("user")
+                ? JSON.parse(localStorage.getItem("user")).nome?.charAt(0).toUpperCase()
+                : "?"}
+            </IconButton>
             <IconButton $darkMode={darkMode} title="Notificações">
               🔔
             </IconButton>

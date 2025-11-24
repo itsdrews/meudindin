@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -18,7 +19,7 @@ type Cliente struct {
 	Contas          []Conta   `json:"contas" gorm:"foreignKey:ClienteID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Metas           []Meta    `json:"metas" gorm:"foreignKey:ClienteID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
-	
+
 // Métodos da entidade Cliente
 func (c *Cliente) AdicionarConta(db *gorm.DB, conta *Conta) error {
 	conta.ClienteID = c.ID
@@ -82,4 +83,13 @@ func (c *Cliente) ListarMetas(db *gorm.DB) ([]Meta, error) {
 		return nil, err
 	}
 	return metas, nil
+}
+
+// VerificarSenha compara a senha em texto puro com o hash salvo
+func (c *Cliente) VerificarSenha(password string) bool {
+	if c.Password == "" || password == "" {
+		return false
+	}
+	err := bcrypt.CompareHashAndPassword([]byte(c.Password), []byte(password))
+	return err == nil
 }

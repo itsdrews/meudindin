@@ -10,6 +10,7 @@ import Home from './pages/Home/Home';
 import Transactions from './pages/Transactions';
 import Contas from './pages/Contas';
 import Goals from "./pages/Goals/Goals";
+import UserManagement from './pages/UserManagement';
 import MainLayout from './components/Layout/MainLayout';
 import styled from 'styled-components';
 
@@ -62,6 +63,10 @@ const AppRoutes = () => {
       <Route 
         path="/" 
         element={<Navigate to={user ? "/visaogeral" : "/login"} />} 
+      />
+      <Route 
+        path="/perfil" 
+        element={user ? <MainLayout><UserManagement /></MainLayout> : <Navigate to="/login" />} 
       />
     </Routes>
   );

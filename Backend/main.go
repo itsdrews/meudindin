@@ -62,6 +62,10 @@ func main() {
 		metas.PATCH("/:id/data-limite", controllers.AtualizarDataLimiteMeta)
 		metas.PATCH("/:id/progresso", controllers.AtualizarProgressoMeta)
 	}
+	// perfil
+	auth.PATCH("/clientes/:id/nome", controllers.AtualizarNomeCliente)
+	auth.PATCH("/clientes/:id/email", controllers.AtualizarEmailCliente)
+	auth.PATCH("/clientes/:id/password", controllers.AtualizarSenhaCliente)
 
 	r.Run(":8080")
 }

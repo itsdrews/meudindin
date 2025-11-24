@@ -266,3 +266,139 @@ func ListMetas(c *gin.Context) {
 
 	c.JSON(http.StatusOK, metas)
 }
+
+// Atualizar nome do cliente
+// PATCH /clientes/:id/nome
+func AtualizarNomeCliente(c *gin.Context) {
+	idParam := c.Param("id")
+	idUint, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "ID inválido"})
+		return
+	}
+	id := uint(idUint)
+
+	var payload struct {
+		Nome string `json:"nome"`
+	}
+	if err := c.ShouldBindJSON(&payload); err != nil || payload.Nome == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "Nome inválido"})
+		return
+	}
+
+	var cliente models.Cliente
+	if err := DB.First(&cliente, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"erro": "Cliente não encontrado"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao buscar cliente"})
+		}
+		return
+	}
+
+	cliente.Nome = payload.Nome
+	if err := DB.Save(&cliente).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao atualizar nome"})
+		return
+	}
+
+	cliente.Password = ""
+	c.JSON(http.StatusOK, gin.H{"mensagem": "Nome atualizado com sucesso", "cliente": cliente})
+}
+
+// Atualizar email do cliente
+// PATCH /clientes/:id/email
+func AtualizarEmailCliente(c *gin.Context) {
+	idParam := c.Param("id")
+	idUint, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "ID inválido"})
+		return
+	}
+	id := uint(idUint)
+
+	var payload struct {
+		Email string `json:"email"`
+		Senha string `json:"senha"`
+	}
+
+	if err := c.ShouldBindJSON(&payload); err != nil || payload.Email == "" || payload.Senha == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "Email e senha são obrigatórios"})
+		return
+	}
+
+	var cliente models.Cliente
+	if err := DB.First(&cliente, id).Error; err != nil { // 👈 ALTERADO AQUI
+		c.JSON(http.StatusNotFound, gin.H{"erro": "Cliente não encontrado"})
+		return
+	}
+
+	if !cliente.VerificarSenha(payload.Senha) {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Senha atual incorreta"})
+		return
+	}
+
+	cliente.Email = payload.Email
+
+	if err := DB.Save(&cliente).Error; err != nil { // 👈 ALTERADO AQUI
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao atualizar email"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"cliente":  cliente,
+		"mensagem": "Email atualizado com sucesso",
+	})
+}
+
+// Atualizar senha do cliente (requer senha atual)
+// PATCH /clientes/:id/password
+func AtualizarSenhaCliente(c *gin.Context) {
+	idParam := c.Param("id")
+	idUint, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "ID inválido"})
+		return
+	}
+	id := uint(idUint)
+
+	var payload struct {
+		CurrentPassword string `json:"currentPassword"`
+		NewPassword     string `json:"newPassword"`
+	}
+	if err := c.ShouldBindJSON(&payload); err != nil || payload.CurrentPassword == "" || payload.NewPassword == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "Dados inválidos"})
+		return
+	}
+
+	var cliente models.Cliente
+	if err := DB.First(&cliente, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"erro": "Cliente não encontrado"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao buscar cliente"})
+		}
+		return
+	}
+
+	// Verifica senha atual
+	if err := bcrypt.CompareHashAndPassword([]byte(cliente.Password), []byte(payload.CurrentPassword)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Senha atual incorreta"})
+		return
+	}
+
+	// Hash da nova senha
+	hashed, err := HashPassword(payload.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao criptografar senha"})
+		return
+	}
+
+	cliente.Password = hashed
+	if err := DB.Save(&cliente).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao atualizar senha"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"mensagem": "Senha atualizada com sucesso"})
+}
