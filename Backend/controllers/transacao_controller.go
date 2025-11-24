@@ -30,6 +30,25 @@ func CriarTransacao(c *gin.Context) {
 
 	transacao.ContaID = uint(contaID)
 
+	// Atualização de saldo
+	switch transacao.Tipo {
+	case "entrada":
+		conta.Saldo += float32(transacao.Valor)
+
+	case "saida":
+		conta.Saldo -= float32(transacao.Valor)
+
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "tipo de transação inválido"})
+		return
+	}
+
+	// Salva atualização do saldo
+	if err := DB.Model(&conta).Update("Saldo", conta.Saldo).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao atualizar saldo"})
+		return
+	}
+
 	if err := DB.Create(&transacao).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao criar transação"})
 		return
