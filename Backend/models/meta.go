@@ -8,18 +8,18 @@ import (
 )
 
 type Meta struct {
-	ID         uint      `json:"id" gorm:"primaryKey;autoIncrement"`
-	Nome       string    `json:"nome" gorm:"not null"`
-	Descricao  string    `json:"descricao"`
-	DataInicio time.Time `json:"dataInicio"`
-	DataLimite time.Time `json:"data_limite" gorm:"column:data_limite"`
-	Valor      float32   `json:"valor" gorm:"defalt:0"`
-	ValorAlvo  float32   `json:"valor_alvo" gorm:"default:0"`
-	Concluida  bool      `json:"concluida" gorm:"default:false"`
-
-	ContaID   uint  `json:"conta_id"`
-	Conta     Conta `json:"conta" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	ClienteID uint  `json:"cliente_id"`
+	ID                uint      `json:"id" gorm:"primaryKey;autoIncrement"`
+	Nome              string    `json:"nome" gorm:"not null"`
+	Descricao         string    `json:"descricao"`
+	DataInicio        time.Time `json:"dataInicio"`
+	DataLimite        time.Time `json:"data_limite" gorm:"column:data_limite"`
+	Valor             float32   `json:"valor"`
+	ValorAlvo         float32   `json:"valor_alvo" gorm:"default:0"`
+	Concluida         bool      `json:"concluida" gorm:"default:false"`
+	SaldoInicialConta float32   `json:"saldo_inicial_conta"`
+	ContaID           uint      `json:"conta_id"`
+	Conta             Conta     `json:"conta" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	ClienteID         uint      `json:"cliente_id"`
 }
 
 //

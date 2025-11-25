@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"Backend/models"
+	"Backend/services"
 	"errors"
 	"fmt"
 	"net/http"
@@ -33,6 +34,14 @@ func CriarConta(c *gin.Context) {
 	var novaConta models.Conta
 	if err := c.ShouldBindJSON(&novaConta); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "Dados inválidos"})
+		return
+	}
+
+	if err := services.ValidarContaExternamente(novaConta); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"erro":     "Conta inválida",
+			"detalhes": err.Error(),
+		})
 		return
 	}
 

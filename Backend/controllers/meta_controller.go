@@ -12,6 +12,7 @@ import (
 )
 
 // Criar meta associada a uma conta (cliente autenticado)
+/*
 func CriarMeta(c *gin.Context) {
 	//  Obtém ID do cliente autenticado via token
 	clienteIDValue, existe := c.Get("cliente_id")
@@ -74,6 +75,81 @@ func CriarMeta(c *gin.Context) {
 		"meta":     meta,
 	})
 }
+*/
+func CriarMeta(c *gin.Context) {
+	// Obtém ID do cliente autenticado
+	clienteIDValue, existe := c.Get("cliente_id")
+	if !existe {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "Token inválido ou ausente"})
+		return
+	}
+	clienteID := clienteIDValue.(uint)
+
+	// ID da conta via rota
+	contaIDParam := c.Param("id")
+	contaID64, err := strconv.ParseUint(contaIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "ID da conta inválido"})
+		return
+	}
+	contaID := uint(contaID64)
+
+	// Busca conta no banco
+	var conta models.Conta
+	if err := DB.First(&conta, "id = ? AND cliente_id = ?", contaID, clienteID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "Conta não encontrada"})
+		return
+	}
+
+	// Bind JSON (valor removido)
+	var body struct {
+		Nome       string  `json:"nome"`
+		Descricao  string  `json:"descricao"`
+		DataLimite string  `json:"data_limite"`
+		ValorAlvo  float32 `json:"valor_alvo"`
+	}
+
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "JSON inválido", "detalhes": err.Error()})
+		return
+	}
+
+	// Parse da data
+	dataLimite, err := time.Parse("2006-01-02", body.DataLimite)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "Data inválida. Use YYYY-MM-DD"})
+		return
+	}
+
+	// Saldo inicial da conta
+	saldoInicial := conta.Saldo
+
+	// Calcula valor automáticamente
+	valorProgresso := conta.Saldo - saldoInicial // sempre zero ao criar
+
+	// Cria meta
+	meta := models.Meta{
+		Nome:              body.Nome,
+		Descricao:         body.Descricao,
+		DataInicio:        time.Now(),
+		DataLimite:        dataLimite,
+		Valor:             valorProgresso,
+		ValorAlvo:         body.ValorAlvo,
+		SaldoInicialConta: saldoInicial,
+		ClienteID:         clienteID,
+		ContaID:           contaID,
+	}
+
+	if err := DB.Create(&meta).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao criar meta"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"mensagem": "Meta criada com sucesso",
+		"meta":     meta,
+	})
+}
 
 // Listar metas de um cliente autenticado (todas as contas)
 func ListarMetasPorCliente(c *gin.Context) {
@@ -87,13 +163,26 @@ func ListarMetasPorCliente(c *gin.Context) {
 
 	var metas []models.Meta
 
-	// Busca todas as metas associadas a qualquer conta do cliente
+	// Busca metas + conta associada
 	if err := DB.Preload("Conta").
 		Where("cliente_id = ?", clienteID).
 		Find(&metas).Error; err != nil {
 
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "Erro ao listar metas"})
 		return
+	}
+
+	// ======== REPROCESSA O PROGRESSO ========
+	for i := range metas {
+		saldoAtual := metas[i].Conta.Saldo
+		saldoInicial := metas[i].SaldoInicialConta
+
+		metas[i].Valor = saldoAtual - saldoInicial
+
+		// Evitar valores negativos caso saldo atual tenha diminuído
+		if metas[i].Valor < 0 {
+			metas[i].Valor = 0
+		}
 	}
 
 	c.JSON(http.StatusOK, metas)
