@@ -275,8 +275,9 @@ const EmptyText = styled.p`
   font-size: 1rem;
   margin: 0;
 `;
-
 const Transactions = ({ darkMode }) => {
+  console.log("[INIT] Componente Transactions montado");
+
   const initialFormState = {
     valor: '',
     tipo: 'receita',
@@ -285,100 +286,189 @@ const Transactions = ({ darkMode }) => {
     contaId: '',
     data: '',
   };
+
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(initialFormState);
   const [editId, setEditId] = useState(null);
+
+  console.log("[STATE] Estado inicial:", {
+    showModal,
+    form,
+    editId
+  });
+
   // Abrir modal para adicionar
   const handleOpenModal = () => {
+    console.log("======== [OPEN_MODAL] ========");
+    console.log("[OPEN_MODAL] Accounts =", accounts);
+
     const primeiraContaId = accounts.length > 0 ? accounts[0].id : '';
+
+    console.log("[OPEN_MODAL] primeiraContaId =", primeiraContaId);
+
     setShowModal(true);
     setEditId(null);
-    setForm({ ...initialFormState, contaId: primeiraContaId });
+
+    const novoForm = { ...initialFormState, contaId: primeiraContaId };
+
+    console.log("[OPEN_MODAL] Form após reset =", novoForm);
+
+    setForm(novoForm);
   };
 
   // Abrir modal para editar
   const handleEditTransaction = (transaction) => {
-    setShowModal(true);
-    setEditId(transaction.id);
-    setForm({
+    console.log("======== [EDIT_MODAL] ========");
+    console.log("[EDIT_MODAL] Transação recebida =", transaction);
+    console.log("[EDIT_MODAL] Accounts disponíveis =", accounts);
+
+    const contaEncontrada = accounts.find(
+      acc => acc.banco === transaction.banco && acc.numero === transaction.numBanco
+    );
+
+    console.log("[EDIT_MODAL] Conta encontrada =", contaEncontrada);
+
+    const dataConvertida = transaction.date.split('/').reverse().join('-');
+    console.log("[EDIT_MODAL] Data convertida PT-BR → ISO =", dataConvertida);
+
+    const novoForm = {
       valor: Math.abs(transaction.amount).toString(),
       tipo: transaction.type,
       categoria: transaction.category,
       descricao: transaction.description || '',
-      contaId: accounts.find(acc => acc.banco === transaction.banco && acc.numero === transaction.numBanco)?.id || '',
-      data: transaction.date.split('/').reverse().join('-'),
-    });
+      contaId: contaEncontrada?.id || '',
+      data: dataConvertida,
+    };
+
+    console.log("[EDIT_MODAL] Novo form =", novoForm);
+
+    setShowModal(true);
+    setEditId(transaction.id);
+    setForm(novoForm);
   };
 
   // Submeter formulário
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("======== [SUBMIT] Início ========");
+    console.log("[SUBMIT] form =", form);
+    console.log("[SUBMIT] editId =", editId);
+
     let categoria = form.categoria;
+
+    // Categoria é nova?
     if (categoria === 'Nova Categoria' && form.descricao.trim()) {
       const novaCategoria = form.descricao;
+      console.log("[SUBMIT] Nova categoria detectada:", novaCategoria);
+
       if (form.tipo === 'receita' && !receitaOptions.includes(novaCategoria)) {
+        console.log("[SUBMIT] Adicionando nova receita");
         setReceitaOptions(prev => [...prev, novaCategoria]);
-        categoria = novaCategoria;
       } else if (form.tipo === 'despesa' && !despesaOptions.includes(novaCategoria)) {
+        console.log("[SUBMIT] Adicionando nova despesa");
         setDespesaOptions(prev => [...prev, novaCategoria]);
-        categoria = novaCategoria;
-      } else {
-        categoria = novaCategoria;
       }
+
+      categoria = novaCategoria;
     }
+
+    // MONTAR PAYLOAD
     const payload = editId
       ? { identificador: categoria }
       : {
-          tipo: form.tipo === 'receita' ? 'entrada' : 'saída',
+          tipo: form.tipo === 'receita' ? 'entrada' : 'saida',
           valor: Number(form.valor),
           categoria,
           descricao: form.descricao,
           titulo: categoria,
-          data: form.data ? new Date(form.data).toISOString() : new Date().toISOString(),
+          data: form.data
+            ? new Date(form.data).toISOString()
+            : new Date().toISOString(),
         };
+
+    console.log("[SUBMIT] Payload final =", payload);
+
+    // Validar conta
     const contaObj = accounts.find(acc => String(acc.id) === String(form.contaId));
+
+    console.log("[SUBMIT] Conta encontrada para esse ID =", contaObj);
+
     const idConta = contaObj ? contaObj.id : accounts[0]?.id;
-    if (!idConta) return;
+
+    console.log("[SUBMIT] ID da conta usada =", idConta);
+
+    if (!idConta) {
+      console.error("[SUBMIT] ERRO: Nenhuma conta válida encontrada.");
+      return;
+    }
+
     try {
+      console.log("[SUBMIT] Chamando service...");
+
       if (editId) {
+        console.log("[SUBMIT] UPDATE → update(", editId, idConta, payload, ")");
         await transactionService.update(editId, idConta, payload);
       } else {
+        console.log("[SUBMIT] CREATE → create(", idConta, payload, ")");
         await transactionService.create(idConta, payload);
       }
+
+      console.log("[SUBMIT] Sucesso! Resetando estados.");
+
       setShowModal(false);
       setEditId(null);
       setForm(initialFormState);
+
+      console.log("[SUBMIT] Recarregando contas + transações...");
       await loadAccountsAndTransactions();
+
+      console.log("[SUBMIT] Finalizado sem erros!");
+
     } catch (err) {
-      alert('Erro ao salvar transação');
-      console.error(err);
+      console.error("[SUBMIT] ERRO AO SALVAR:", err);
+      alert('Erro ao salvar transação — veja o console.');
     }
   };
+
+  // ================================
+  // FILTROS / OPÇÕES
+  // ================================
   const [filterType, setFilterType] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAccount, setFilterAccount] = useState('all');
+
   const defaultReceita = ['Salário','Freelance','Venda','Rendimento'];
   const defaultDespesa = ['Alimentação','Contas','Transporte','Lazer','Saúde'];
+
   const [receitaOptions, setReceitaOptions] = useState(defaultReceita);
   const [despesaOptions, setDespesaOptions] = useState(defaultDespesa);
+
   const [transactions,setTransactions] = useState([]);
   const [accounts, setAccounts] = useState([]);
+
   const categoriaOptions = form.tipo === 'receita' ? receitaOptions : despesaOptions;
 
-  // Função para carregar contas e transações (reutilizável)
+  // ================================
+  // CARREGAR CONTAS + TRANSAÇÕES
+  // ================================
   const loadAccountsAndTransactions = async () => {
-    try {
-      // 1. Carrega todas as contas
-      const accounts = await accountService.list();
-      setAccounts(accounts);
+    console.log("======== [LOAD] Carregando contas + transações ========");
 
+    try {
+      const accounts = await accountService.list();
+      console.log("[LOAD] Contas carregadas =", accounts);
+
+      setAccounts(accounts);
       let allTransactions = [];
 
-      // 2. Para cada conta, carrega suas transações
       for (const acc of accounts) {
+        console.log(`[LOAD] Buscando transações da conta ${acc.id}`);
+
         try {
           const trans = await transactionService.listByAccountId(acc.id);
+
+          console.log(`[LOAD] Transações recebidas da conta ${acc.id}:`, trans);
 
           const mapped = trans.map(t => ({
             id: t.id,
@@ -399,39 +489,47 @@ const Transactions = ({ darkMode }) => {
                 : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
           }));
 
-          // Junta transações desta conta
+          console.log(`[LOAD] Transações mapeadas da conta ${acc.id}:`, mapped);
+
           allTransactions = [...allTransactions, ...mapped];
 
         } catch (err) {
-          console.warn(`Erro ao carregar transações da conta ${acc.id}`, err);
+          console.warn(`[LOAD] ERRO ao carregar transações da conta ${acc.id}:`, err);
         }
       }
 
-      // 3. Ordena por data (opcional)
+      console.log("[LOAD] TOTAL de transações = ", allTransactions.length);
+
       allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      // 4. Atualiza estado global de transações
+      console.log("[LOAD] Transações ordenadas por data.");
+
       setTransactions(allTransactions);
 
+      console.log("[LOAD] Load finalizado!");
+
     } catch (error) {
-      console.error("Erro ao carregar contas e transações:", error);
+      console.error("ERRO AO CARREGAR CONTAS E TRANSAÇÕES:", error);
     }
   };
 
-  // Carregar ao montar o componente
   useEffect(() => {
     loadAccountsAndTransactions();
   }, []);
 
-
-  // Filtrar transações
+  // ================================
+  // FILTRAGEM COM LOG
+  // ================================
   const filteredTransactions = transactions.filter(transaction => {
     const matchesType = filterType === 'all' || transaction.type === filterType;
     const matchesCategory = filterCategory === 'all' || transaction.category === filterCategory;
     const matchesSearch = transaction.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesAccount = filterAccount === 'all' || String(transaction.accountId) === String(filterAccount);
+
     return matchesType && matchesCategory && matchesSearch && matchesAccount;
   });
+
+  console.log("[FILTER] Transações filtradas =", filteredTransactions);
 
   return (
     <TransactionsContainer>

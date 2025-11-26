@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"Backend/models"
-	"Backend/services"
 	"net/http"
 	"strconv"
 
@@ -30,14 +29,6 @@ func CriarTransacao(c *gin.Context) {
 	}
 
 	transacao.ContaID = uint(contaID)
-
-	if err := services.ValidarTransacaoExternamente(transacao); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"erro":     "Falha na validação externa da transação",
-			"detalhes": err.Error(),
-		})
-		return
-	}
 
 	// Atualização de saldo
 	switch transacao.Tipo {
