@@ -203,7 +203,8 @@ useEffect(() => {
   // Salvar apenas o apelido
   async function handleSaveApelido() {
     try {
-      await accountService.update(selectedAccountId, { apelido });
+    
+      await accountService.update(selectedAccountId,  {apelido:apelido} );
 
       // Atualiza lista principal   
       setAccounts(prev =>
@@ -216,7 +217,7 @@ useEffect(() => {
     } catch (err) {
       alert("Erro ao atualizar apelido");
       console.log(err);
-    }
+    } 
   }
 
   const openViewModal = (id) => {

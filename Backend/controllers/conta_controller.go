@@ -164,7 +164,7 @@ func RemoverConta(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"mensagem": "Conta removida com sucesso"})
 }
 
-// PATCH /contas/:conta_id
+// PATCH /contas/:id
 func AtualizarConta(c *gin.Context) {
 	//  Obtém o ID do cliente autenticado (do token JWT)
 	clienteIDValue, existe := c.Get("cliente_id")

@@ -54,7 +54,7 @@ func (c *Conta) AtualizarCamposEditaveis(db *gorm.DB, novosDados map[string]inte
 		"Tipo":     false,
 		"Banco":    false,
 		"Saldo":    false,
-		"Apelido":  true,
+		"apelido":  true,
 	}
 
 	// Filtra apenas campos permitidos
